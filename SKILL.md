@@ -1,6 +1,6 @@
 ---
-name: bang-motion
-description: Membangun motion graphic sinematik di browser (promo video, opener, intro, bumper, kinetic typography, explainer/video penjelasan bergambar 16:9 atau 9:16) memakai HTML + CSS + GSAP (+ Three.js bila perlu), dengan hasil yang bergerak seperti video sungguhan — bukan slide presentasi. Gunakan skill ini setiap kali user meminta "video promo", "opener", "intro animasi", "motion graphic", "bumper", "kinetic typography", "animasi teks sinematik", "explainer", "video penjelasan" (jurnalisme visual, kartun edukasi, kolase), atau menunjukkan referensi video promosi/explainer dan ingin dibuatkan versi web-nya — bahkan bila mereka tidak menyebut kata "motion graphic" secara eksplisit. Juga gunakan bila user mengeluh hasil animasi web "seperti PPT/presentasi" dan ingin lebih sinematik, atau ingin merender animasi web menjadi file video MP4, atau ingin explainer kartun/animasi dibangun LANGSUNG di After Effects lewat bridge/MCP Higgsfield.
+name: motion-bang-bang
+description: Build cinematic in-browser motion graphics (promo videos, openers, intros, bumpers, kinetic typography, and 16:9 or 9:16 illustrated explainers) using HTML + CSS + GSAP (+ Three.js when needed), producing outputs that move like real video rather than presentation slides. Use this skill whenever the user asks for a "promo video", "opener", "animated intro", "motion graphic", "bumper", "kinetic typography", "cinematic text animation", "explainer", "explainer video" (visual journalism, educational cartoon, collage), or provides promotional/explainer video references and wants a web version — even if they do not explicitly say "motion graphic". Also use when the user complains web animation looks "like a PowerPoint/slideshow" and wants it more cinematic, wants to render web animation into an MP4 video file, or wants cartoon/animated explainers built DIRECTLY in After Effects via the Higgsfield MCP bridge.
 license: MIT
 metadata:
   author: Bang Tutorial
@@ -10,542 +10,257 @@ metadata:
   homepage: https://github.com/bangtutorial/bang-motion
 ---
 
-# Bang Motion — motion graphic web yang bukan PPT
+# Motion Bang Bang — Web Motion Graphics That Move Like Video, Not Slides
 
-**v1.19.0 · by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Riwayat perubahan di `CHANGELOG.md`;
-cara pasang di `README.md`.
+**v1.19.0 · by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
 
-Skill ini untuk AI coding agent apa pun (format Agent Skills terbuka).
-Isinya hukum dan resep untuk motion graphic yang bergerak seperti video, bukan
-presentasi — patuhi sebelum menulis kode.
+This skill is designed for any AI coding agent (open Agent Skills specification). It defines strict principles and production recipes for motion graphics that behave like real video rather than slide presentations. **Read and enforce these rules before writing any code.**
 
-## Prasyarat — hanya browser
+## Prerequisites — Browser Only
 
-Deliverable (`index.html`) hanya butuh browser modern + internet untuk CDN
-(GSAP, font). Python dan Node **opsional**, dipakai hanya untuk alat kerja:
-`scripts/serve.py` (server no-cache, cuma perlu bila memakai module lokal),
-puppeteer (snapshot/verifikasi otomatis, `scripts/export-frames.mjs` → MP4).
-Kalau user tidak punya keduanya: (1) tetap bangun satu-berkas, buka lewat
-klik dua kali; (2) verifikasi visual lewat `?debug=1` (panel scrub) dan
-screenshot manual per detik kunci; (3) MP4 lewat rekam layar (OBS / rekam
-tab browser) — jelaskan bahwa hasil rekam layar bisa drop frame, dan render
-frame-by-frame butuh Node. Jangan pernah membuat deliverable yang butuh
-`npm install` untuk DITONTON.
+The core deliverable (`index.html`) requires only a modern browser and an internet connection for CDNs (GSAP, web fonts). Python and Node are **strictly optional tooling**:
+- `scripts/serve.py`: Zero-cache local dev server (only needed when using local JS modules).
+- Node + Puppeteer: Automated verification snapshots (`scripts/snap.mjs`) and frame-by-frame MP4 export (`scripts/export-frames.mjs`).
 
-**ffmpeg juga opsional.** Cek dulu (`ffmpeg -version`); bila tidak ada:
+If the user has neither Python nor Node:
+1. Always build a self-contained single-file deliverable opened directly via double-click (`file://`).
+2. Perform visual checks using `?debug=1` (scrub bar panel) and capture manual screenshots at key seconds.
+3. For MP4 output, suggest screen recording (OBS or browser tab capture) with a disclaimer that screen capture may drop frames, whereas frame-by-frame rendering requires Node.
+4. **NEVER produce a deliverable that requires running `npm install` just to be viewed.**
 
-| Kebutuhan | Dengan ffmpeg | Tanpa ffmpeg |
+**FFmpeg is also optional.** Check first with `ffmpeg -version`. If unavailable:
+
+| Task | With FFmpeg | Without FFmpeg |
 |---|---|---|
-| Sinkron VO (batas kalimat/paragraf) | `silencedetect` | `scripts/vo-pauses.html` — buka di browser, pilih audio, salin `SEG`/`PARA`; hasilnya sama persis (Web Audio, tanpa instal) |
-| Durasi/format audio | `ffprobe` | angka `DUR` dari vo-pauses.html; browser memutar wav/mp3/m4a/ogg langsung |
-| Export MP4 | gabung PNG dari export-frames.mjs | tidak ada MP4 — tawarkan instal satu perintah (`winget install Gyan.FFmpeg` / `brew install ffmpeg`) atau rekam layar |
-| Mempelajari video referensi (ekstrak frame) | `fps=` + `tile=` | minta user mengirim screenshot di detik kunci, atau buka videonya di browser dan potret pada detik tertentu |
+| Voiceover (VO) sync (sentence/paragraph pauses) | `silencedetect` filter | `scripts/vo-pauses.html` — open in browser, load audio file, copy `SEG`/`PARA` markers (runs Web Audio API locally with zero install) |
+| Audio duration and format check | `ffprobe` | `DUR` value from `scripts/vo-pauses.html`; modern browsers play WAV/MP3/M4A/OGG natively |
+| MP4 Export | Stitch PNG sequence from `export-frames.mjs` | No direct MP4 export — suggest 1-command install (`winget install Gyan.FFmpeg` / `brew install ffmpeg`) or screen recording |
+| Reference video study (frame extraction) | `fps=` + `tile=` filters | Ask user for screenshots at key timestamps, or open the video in browser and inspect frames |
 
-Tanpa ffmpeg alur explainer tetap lengkap sampai sinkron VO; hanya MP4 yang
-butuh instalasi.
+Without FFmpeg, the entire explainer workflow remains functional up to VO synchronization; only MP4 rendering requires installation.
 
-## Player — tidak ada, autoplay, loop
+## Player Rules — No On-Screen Player, Autoplay, Seamless Loop
 
-Default deliverable: **tanpa panel/player apa pun di layar**, langsung
-memutar saat dibuka, dan mengulang dari awal saat selesai (`onComplete →
-play(0)`; bila ada suara, audio ikut diulang). Kontrol tersembunyi: R ulang,
-Space jeda. Panel scrub/jam hanya muncul dengan `?debug=1` (alat review),
-dan `?clean=1` menahan autoplay untuk export. Ada suara? Coba `play()`
-langsung; bila diblokir browser, tahan di frame 0 dan mulai pada klik
-pertama — tanpa teks "ketuk untuk mulai". Ini sudah tertanam di kedua
-starter.
+The default deliverable **MUST NOT show any on-screen player controls or UI overlays**.
+- **Autoplay & Loop**: Plays immediately upon opening and loops from start upon completion (`onComplete → play(0)`; if audio is present, audio rewinds and replays).
+- **Hidden keyboard shortcuts**: `R` to restart, `Space` to toggle play/pause.
+- **Developer & Review panels**:
+  - `?debug=1`: Displays scrub slider and timestamp indicator (`t.toFixed(2)`).
+  - `?clean=1`: Suppresses autoplay (used by automated export scripts).
+- **Audio Autoplay Fallback**: Call `play()` immediately. If blocked by browser autoplay policies, pause at frame 0 and start playback on the very first user interaction — without adding any "Click to Play" overlay text. Both starter templates include this behavior out of the box.
 
-## Larangan struktural — uji PPT yang bisa diperiksa mekanis
+## Structural Prohibitions — Mechanical "Anti-PPT" Checks
 
-Model lain (dan kamu, bila lelah) akan jatuh ke pola ini walau sudah membaca
-hukum di bawah. Sebelum menyerahkan, cek KODE, bukan perasaan:
+AI models default to presentation slide deck patterns unless explicitly constrained. Before presenting code to the user, mechanically check the codebase:
 
-1. `grep -c "class=\"scene\"\|<section" index.html` — bila ≥ 3 adegan
-   berupa `<section>` yang dinyalakan-dimatikan dengan `autoAlpha`/opacity
-   → itu slide deck. Adegan harus berganti karena DUNIA/KAMERA bergerak
-   (kamera bergerak, whip ke sudut lain, push-through, latar berganti),
-   bukan karena section di-fade. Pengecualian yang sah: **kartun panggung**
-   (`references/kartun-panggung.md`) memakai cut/geser 96 px antar panggung
-   — boleh, karena tiap panggung hidup penuh (≥10 benda beraksi), bukan
-   gambar diam yang di-fade.
-2. Ada benang merah visual yang bertahan: satu subjek (aksi kontinu) ATAU
-   satu dunia kolase/kertas/putih yang disusuri kamera (kartun, foto,
-   katalog, sketsa). Foto full-bleed berganti-ganti tanpa dunia bersama →
-   PPT. Satu gambar + satu kalimat per adegan, berganti tiap adegan →
-   tetap slideshow walau kameranya bergerak: tiap adegan 3–5 elemen yang
-   masuk bertahap per frasa (explainer.md "Satu adegan = 3–5 elemen").
-3. Per adegan hitung node teks: eyebrow/kicker + judul + body/kredit = 3
-   tingkat → PPT. Maksimum dua: satu angka/kalimat besar + satu label dunia.
-   Dokumen/stempel/blok tanggal berisi ≤ 3 baris pendek dihitung objek,
-   bukan tingkat teks.
-4. Ken Burns (scale 1.0→1.05 pada foto) sebagai satu-satunya gerak → PPT.
-   Gerak tiap detik harus datang dari BAHASA GERAK LATAR yang dipilih di
-   style brief dari menu `techniques.md` §7c (kamera bernapas di latar
-   bertekstur, gradien berpindah, blob mengambang, grain hidup, sapuan
-   cahaya per segmen, bentuk besar berputar lambat, partikel naik, grid
-   bernapas, teks hantu bergeser, Ken Burns + parallax…). Batang/garis/
-   potongan yang melintas ke samping ("lane", "range", "streak", hujan
-   partikel horizontal) SUDAH dipakai dua proyek berturut-turut dengan nama
-   berbeda — itu bukan default; hanya bila tema memang kecepatan/aliran,
-   dan tidak boleh dua proyek berturut-turut.
-5. Transisi hanya fade + scale bump + light leak di semua cut → template PPT.
-   Whip ke sudut lain, cut ke instrumen (peta/speedometer/profil), push-through.
-6. Explainer dimulai dari starter GAYANYA: `starter-explainer-kartun`,
-   `-jurnalisme`, `-katalog`, `-sketsa` (mode kolase: kamera menyusuri aset
-   diam), `starter-explainer` (aksi kontinu: dunia mengalir), atau
-   `starter-explainer-panggung` (kartun panggung: satu panggung per adegan,
-   rig sendi, kamera hanya di dalam panggung). Yang kolase satu rig; yang
-   panggung rignya lain. BUKAN dari `assets/starter-opener.html`
-   (opener teks), dan bukan dari nol.
+1. **Slide Section Check**: Run `grep -c "class=\"scene\"\|<section" index.html`. If $\ge 3$ scenes consist of `<section>` elements toggled sequentially via `autoAlpha` or opacity, **it is a slide deck and will be rejected**. Scenes MUST transition through camera and world movement (camera translation, whip-pan, push-through, morphing canvas, background shift), never by cross-fading stationary sections.
+   - *Valid exception*: **Cartoon Stage** (`references/kartun-panggung.md`), which uses hard cuts or 96px container slides between stages. This is permitted because each stage is fully alive ($\ge 10$ moving/reactive entities), not a static graphic fading out.
+2. **Persistent Visual Thread**: There must be an anchor that persists across scenes: a continuous subject (continuous action) OR a unified paper/collage/grid world traversed by the camera (cartoons, photo journalism, catalogs, sketches). Full-bleed photos swapping without a shared physical world = PPT. A single image + single sentence per scene = slideshow even with camera panning. Each scene needs 3–5 elements entering progressively per spoken phrase (see `references/explainer.md` "One scene = 3–5 elements").
+3. **Maximum Text Hierarchy**: Count text nodes per scene. `Eyebrow/kicker + headline + subtitle/body/credits` = 3 tiers $\rightarrow$ Slide deck. **Enforce a maximum of two tiers per scene**: one large headline/number + one diegetic world label. Badges, documents, stamps, or date blocks containing $\le 3$ short lines count as world objects, not text tiers.
+4. **Ken Burns Trap**: A slight scale animation (1.0 $\rightarrow$ 1.05) on a static image as the only movement = PPT. Every second of animation must feature active motion driven by the chosen **Background Motion Language** (`references/techniques.md` §7c): breathing camera on textured surfaces, moving gradients, floating organic blobs, live grain, segment light sweeps, slow rotating geometric hulls, rising particles, breathing grids, shifting ghost text, or parallax layers. Horizontal light streaks/lanes/horizontal particle rain must not be used as an automatic default.
+5. **Template Transition Trap**: Applying fade + scale bump + light leak to every cut = PPT template. Use purposeful transitions: 3D push-through, whip pans, cuts to diegetic instruments (gauges, maps, speedometers), or object wipes.
+6. **Correct Starter Selection**: An explainer MUST begin with its dedicated style starter: `starter-explainer-kartun`, `-jurnalisme`, `-katalog`, `-sketsa` (collage mode: camera traverses static assets), `starter-explainer` (continuous action: flowing world), or `starter-explainer-panggung` (cartoon stage: 1 stage per scene, jointed puppet rigs). Never start an explainer from `assets/starter-opener.html` (text opener) or an empty canvas.
+7. **Miniature Trap**: Camera zoomed out ($< 1.08$) making houses thumb-sized with empty space filling half the frame = PPT. Split large environments into distinct frame-sized stages (`references/kartun-panggung.md` Law 1).
+8. **Formulaic Opener Framework**: Avoid the clichéd sequence: zoom-in text exiting left $\rightarrow$ 3 icon tiles $\rightarrow$ typing search bar $\rightarrow$ hook $\rightarrow$ feature $\rightarrow$ feature $\rightarrow$ promise $\rightarrow$ logo $\rightarrow$ CTA. If 2 or more of these elements appear without strict concept justification, select a distinct concept from `references/opener-konsep.md`.
 
-7. **Miniatur adalah slide.** Kamera zoom < 1,08 sehingga rumah sebesar ibu
-   jari dan tanah kosong mengisi separuh layar → PPT walau semua bergerak.
-   Dunia dipecah jadi panggung seukuran frame, bukan satu peta besar yang
-   dijelajahi (`kartun-panggung.md` Hukum 1).
+**Failing any single check requires refactoring before showing results to the user.**
 
-8. **Kerangka template (opener/promo).** Cek rundown dan kode: adegan pertama
-   berupa teks yang diperbesar lalu keluar ke kiri; tiga tile/kartu fitur
-   sejajar; kotak input/searchbar yang diketik; urutan hook → fitur → fitur →
-   janji → logo → CTA. Dua atau lebih tanpa tuntutan konsep → template, walau
-   kulitnya baru. Pilih ulang kerangka dari `references/opener-konsep.md`.
+## Project Categories Covered
 
-Gagal satu poin saja → rombak sebelum ditunjukkan ke user.
+This skill covers web-based motion graphics in general. Explainers have dedicated documentation due to their narrative structure, but are one facet of motion graphics.
 
-## Jenis pekerjaan yang dicakup
+Starter files match their project category:
+- `starter-opener.html`: Openers, promos, bumpers, channel intros, and kinetic typography.
+- `starter-explainer-*.html`: Explainers, with suffixes designating style/mode (`-kartun`, `-jurnalisme`, `-katalog`, `-sketsa` for collage; no suffix for continuous action; `-panggung` for cartoon stage). Cartoon stage is an explainer style (Style 6), not an isolated format.
 
-Skill ini untuk motion graphic web secara UMUM. Explainer hanya salah satu
-jenis — ia punya dokumen sendiri karena strukturnya beda, bukan karena ia
-yang utama.
-
-Starter dinamai menurut kategorinya: `starter-opener.html` untuk opener, promo,
-bumper, intro, dan kinetic typography; `starter-explainer-*.html` untuk explainer,
-dengan akhiran mode/gaya (`-kartun`, `-jurnalisme`, `-katalog`, `-sketsa` = kolase;
-tanpa akhiran = aksi kontinu; `-panggung` = kartun panggung). Kartun panggung adalah
-mode explainer (gaya 6), bukan kategori sendiri: tujuannya tetap menjelaskan dengan
-VO, yang berbeda hanya cara produksinya.
-
-| Jenis | Durasi lazim | Ciri | Resep |
+| Category | Typical Duration | Characteristics | Core Blueprint |
 |---|---|---|---|
-| Opener / promo produk | 25–40 dtk | satu konsep dari menu (kerangka lahir dari produk, bukan urutan baku), satu momen istimewa, penutup brand | `references/opener-konsep.md` + alur kerja di bawah + `references/techniques.md` |
-| Bumper / ident / logo sting | 3–8 dtk | logo build-on, satu gerak tanda tangan, selesai sebelum penonton sadar | `techniques.md` (logo build-on, light leak) |
-| Intro / outro kanal | 5–12 dtk | nama kanal + tanda tangan gerak yang sama tiap episode | alur kerja di bawah |
-| Kinetic typography / lirik | 15–60 dtk | teks adalah subjek; split per kata/huruf; ritme mengikuti audio | `techniques.md` (split + blur berarah, pan 3D per kata) |
-| Title / lower third / bumper segmen | 2–6 dtk | elemen kecil di atas footage, masuk-keluar bersih, latar transparan | `techniques.md` |
-| Explainer / video penjelasan | 30–90 dtk | fakta bersumber, entitas tampil, sudut pandang berganti, lima gaya | `references/explainer.md` + starter per gaya |
+| Product Opener / Promo | 25–40 s | One concept selected from menu, bespoke structure derived from product, one signature climax moment, branded payoff | `references/opener-konsep.md` + workflow below + `references/techniques.md` |
+| Bumper / Ident / Logo Sting | 3–8 s | Branded logo build-on, single signature motion motif, ends decisively | `references/techniques.md` (logo build-on, light leak) |
+| Channel Intro / Outro | 5–12 s | Channel title + consistent repeatable signature motion | Workflow below |
+| Kinetic Typography / Lyrics | 15–60 s | Text is the primary hero; word/character splitting; rhythm strictly matches audio | `references/techniques.md` (split + directional blur, 3D word pan) |
+| Title / Lower Third / Segment Bumper | 2–6 s | Subtle overlays atop footage, clean in/out, transparent backdrop | `references/techniques.md` |
+| Illustrated Explainer Video | 30–90 s | Sourced factual narrative, persistent entities, shifting visual angles, 6 defined styles | `references/explainer.md` + style starter |
 
-## Explainer dan karakter: baca sebelum menentukan shot
+## Explainers and Characters: Read Before Defining Shots
 
-Untuk explainer kartun edukasi flat berkarakter (gaya keenam, **kartun
-panggung**), atau revisi yang terasa seperti slideshow/miniatur, baca
-`references/kartun-panggung.md`: satu panggung per adegan, zoom 1,08–1,95,
-kontinu di dalam panggung dan cut/geser 96 px di antaranya, rig sendi dengan
-transform manual, nol caption, palet flat cerah. Bedakan kalimat, beat visual,
-framing, dan pergantian panggung. Untuk membangunnya langsung di After Effects, baca
-`references/ae-bridge-higgsfield.md`. Pedoman khusus explainer ini memperjelas
-aturan opener di bawah; contoh font, jumlah scene, dan efek bukan resep universal.
+For flat educational cartoon explainers featuring characters (Style 6, **Cartoon Stage**) or any revisions that feel like a miniature slideshow, consult `references/kartun-panggung.md`:
+- One discrete stage per scene, zoom range $1.08–1.95$, continuous action inside the stage and hard cuts or 96px slides between stages.
+- Jointed puppet rigs with manual proxy transforms, zero on-screen captions, and vibrant flat palettes.
+- Distinguish between spoken sentences, visual beats, framing shifts, and stage transitions.
+- To build directly inside Adobe After Effects, follow `references/ae-bridge-higgsfield.md`.
 
-## Hukum #1 — Ini video, bukan slide
+## Law #1 — This Is Video, Not Slides
 
-Penyakit paling umum: model menyusun adegan seperti slide — judul + sub-judul
-+ body copy + deretan badge. Itu langsung terbaca "PPT" dan akan ditolak.
+The most common failure mode is treating a video scene like a slide: headline + subheadline + body copy + badge row. That immediately looks like a PowerPoint presentation.
 
-Aturan kerasnya:
+Strict Rules:
+- **For openers: maximum of one short sentence + at most one primary hero object per scene.** NEVER include kickers ("01 — FEATURES"), explanatory subheads, paragraphs, or technical metadata (package names, full URLs). Native UI buttons/chips within an interactive product demo mockup are exempt.
+- **New information = new visual action.** In explainers, mutate states or trigger actions within the same environment when concepts remain connected; a new sentence does not require a camera cut.
+- **Replace bullet points with visual demonstrations.** Avoid defaulting to 3 parallel card tiles. Select a mechanism from `references/opener-konsep.md` (interactive UI demo, sequential word swap, object metamorphosis, card shuffling, tile grid). Do not use the same mechanism across consecutive projects.
+- **Scenes must remain dynamic.** The camera may hold steady only when hero objects provide continuous action. Move the camera to follow or reveal action; do not rely on fading text over a static backdrop or repeating identical zoom moves across every segment.
+- **"Zooming" means changing shot scale, not slight camera drift.** When a scene feels static or zoom is requested, cut or push close to the active storytelling element (medium close-up / close-up), then pull back to wide according to narrative cadence. A camera scale change of 2–3% is imperceptible (`references/techniques.md` §3b).
 
-- **Untuk opener: satu kalimat pendek + maksimal satu objek utama per adegan.** Tidak ada
-  kicker ("01 — FITUR"), sub-judul, paragraf keterangan, chip/badge fitur,
-  atau metadata teknis (nama package, URL panjang). Chip, tombol, dan label yang
-  merupakan bagian UI produk yang sedang dipakai tidak termasuk.
-- **Informasi baru = respons visual baru.** Pada explainer, ubah keadaan/aksi
-  di dunia yang sama bila masih berhubungan; pergantian kalimat tidak wajib mengganti shot.
-- **Daftar poin diganti visual, bukan otomatis tiga tile.** Pilih cara dari
-  menu fitur di `references/opener-konsep.md` (satu fitur didemokan, kata
-  berganti, objek bertransformasi, kartu dikocok, grid tile…); dua opener
-  berturut-turut tidak memakai cara yang sama.
-- **Adegan harus hidup.** Kamera boleh menetap saat objek membawa aksi.
-  Gerakkan kamera untuk mengikuti atau mengungkap sesuatu; jangan mengandalkan
-  teks fade/slide di atas latar diam, atau pan/zoom berulang di semua segmen.
-- **"Zoom in-out" = ukuran shot, bukan napas kamera.** Bila video terasa statis atau
-  user meminta zoom, kamera mendekat ke elemen yang sedang bercerita (medium close-up
-  / close-up) lalu mundur ke wide mengikuti ketukan isi; napas beberapa persen hampir
-  tak terlihat (`techniques.md` §3b).
+Read `references/anti-ppt.md` **BEFORE** designing scenes. It contains real-world failure patterns and exact remedies.
 
-Baca `references/anti-ppt.md` SEBELUM mendesain adegan — berisi daftar
-pelanggaran nyata beserta perbaikannya.
+## Law #2 — Deterministic or Die
 
-## Hukum #2 — Deterministik atau mati
+**Never read system time (`Date.now()`, `performance.now()`) or call `Math.random()` inside the render loop.**
 
-Tidak ada satu baris pun yang membaca jam sistem. Semua visual adalah fungsi
-murni dari `tl.time()` (waktu timeline GSAP): spektrum, angka berjalan,
-partikel, getar kamera (sinus frekuensi tinggi, bukan `Math.random()`),
-posisi objek yang "mengalir" (tween JARAK, bukan akumulasi kecepatan per
-frame). Konsekuensinya: scrub akurat seperti timeline After Effects, dan
-render frame-by-frame ke MP4 menghasilkan gambar identik setiap kali.
+Every visual state must be a pure, deterministic mathematical function of `tl.time()` (GSAP master timeline time):
+- Audio visualizers, counters, particle flows, and camera shake (use high-frequency sine waves `Math.sin(t * 137.2)`, never random noise).
+- Flowing objects (particles, tunnels) must tween **DISTANCE** (`flow: '+=300'`), where position is calculated as `(seed + flow * speed) % span`, NEVER `pos += speed * dt`.
 
-## Hukum #3 — Gaya lahir dari tema, bukan dari starter, bukan dari referensi
+**Consequences**: Scrubbing in `?debug=1` behaves identically to an After Effects timeline, and frame-by-frame rendering produces bit-for-bit identical frames every run.
 
-Kegagalan yang umum: opener untuk produk lain keluar dengan kulit PERSIS
-opener produk sebelumnya — gelap, aksen biru, glow, nebula, font yang sama —
-karena model mengambil gayanya dari starter. Animasinya bisa bagus, tetap
-gagal: opener adalah wajah produk, dan dua produk tidak boleh berwajah sama.
+## Law #3 — Style Is Born From the Brand Theme, Never From Starters or References
 
-1. **Style brief dulu, kode belakangan.** Sebelum menyentuh starter, tulis
-   enam baris ini dan tunjukkan ke user bersama rundown adegan:
-   - tema/produk + tiga kata sifat perasaan yang ingin ditinggalkan;
-   - **konsep & sidik jari struktur** (opener/promo): tiga kandidat konsep dari
-     `references/opener-konsep.md`, satu dipilih dengan alasan dari produk, lalu
-     `konsep · jumlah adegan · objek utama tiap adegan · pembuka · penutup`;
-   - palet: satu warna utama DARI brand/tema (logo, ikon aplikasi, situs,
-     kemasan), satu warna latar, satu aksen — sebutkan hex DAN sumber tiap
-     warna; warna yang bukan dari brand ditulis "turunan: alasan";
-   - font display yang punya karakter sesuai perasaan itu (bukan
-     Poppins/Inter/Roboto/Montserrat/Arial) + font pendamping; pengecualian:
-     konsep klaim → cara → hasil memakai font UI produk sendiri
-     (`references/opener-konsep.md`);
-   - penekanan teks: tanpa sorotan kata, atau satu bentuk sorotan (sebutkan) —
-     sorotan kata OPSIONAL, bukan bawaan setiap opener;
-   - bahasa latar per segmen: satu arah dari tabel "Arah gaya" untuk semua,
-     atau rencana pergantian (segmen mana ganti, ke apa, kenapa, dipicu apa);
-   - tanda tangan gerak: satu jenis gerak yang diulang sebagai identitas
-     (wipe objek, roll 3D per kata, kertas terbang, garis yang menggambar,
-     blok warna menabrak tepi…);
-   - gerak latar: satu bahasa dari menu `techniques.md` §7c — bukan hal yang
-     sama dengan tanda tangan gerak, dan bukan otomatis "benda melintas";
-   - permukaan latar: dari menu §7d (gradien/cahaya/tekstur/grainy gradient,
-     ≥ 2 lapis) — bukan flat;
-   - gaya render objek: satu keluarga dari menu `techniques.md` §7e (flat, clay,
-     glossy, kaca, isometrik, realistis, garis neon…);
-   - aset foto (bila konsep memakai foto orang/tempat/produk): sumbernya — foto
-     user, generate lewat MCP Higgsfield, atau stok berlisensi — DITANYAKAN ke
-     user, plus daftar shot per babak (`references/opener-konsep.md` "Foto dalam
-     opener");
-   - transisi: tentukan batas mana yang memerlukan efek dan mana yang cukup cut;
-     pilih dari menu §4c sesuai konteks, bukan wajib dua jenis atau wajib 3D;
-   - satu momen istimewa (di mana efek termahal dipakai, sekali).
-2. **Starter adalah arsitektur, bukan gaya.** Warna abu-abu, font sistem,
-   dan latar WebGL di `assets/starter-opener.html` adalah PLACEHOLDER. Kalau salah
-   satunya masih terlihat di hasil, gaya belum diturunkan. Latar WebGL
-   (nebula, debu, grid, bloom) hanya satu bahasa latar dari delapan;
-   matikan bila arah gayanya lain.
-3. **Referensi = ritme, bukan kulit.** Dari video referensi ambil: durasi per
-   shot, jenis transisi, hierarki atensi, energi, bahasa gerak. JANGAN ambil:
-   palet, font, tekstur, tata letak, bentuk ornamen, kalimat, urutan adegan,
-   dan momen unik (pembuka/penutup khas, gimmick satu kali). "Buatkan
-   seperti ini" berarti "seenergik ini", bukan "berwarna seperti ini";
-   "pakai style X" berarti kulit dan bahasa gerak X, bukan adegan X. Contoh
-   urutan di `references/opener-konsep.md` diperlakukan sama: prinsip, bukan
-   naskah (Hukum kerangka #7).
-   Menjiplak kulit referensi = pelanggaran, walau user yang menyodorkannya —
-   sebutkan itu satu kalimat lalu tawarkan versi yang lahir dari tema.
-4. **Berbeda dari proyek sebelumnya — kulit DAN kerangka.** Dua produk berbeda harus berbeda di
-   minimal tiga dari empat: palet, font, bahasa latar, tanda tangan gerak —
-   termasuk bentuk sorotan kata bila dipakai (pill + bintang milik satu
-   proyek tidak boleh muncul lagi di proyek lain). Kerangkanya juga: konsep
-   berbeda, atau ≥ 3 dari 5 elemen sidik jari struktur berbeda
-   (`references/opener-konsep.md`). Warna baru di atas urutan adegan lama
-   tetap template.
-   Jangan membuka folder proyek lama untuk "contoh" — yang boleh diwarisi
-   hanya aturan di skill ini.
-5. **Latar tidak default gelap.** Tanpa aturan ini semua opener cenderung
-   keluar gelap dengan nebula karena starter dan contoh-contohnya gelap. Latar mengikuti
-   tema: gradien terang, warna lembut, blok warna, kertas, foto, atau gelap
-   — tabel "Arah gaya" punya sepuluh pilihan dan sebagian besar tidak gelap.
-   Contoh-contoh di skill ini (kertas terang, nebula) hanya contoh, bukan
-   templat yang dikunci.
-   **Latar tidak pernah statis.** Selalu ada gerak latar (§7c), dan warna
-   latar BOLEH berganti kapan pun dibutuhkan: mood/topik segmen berubah
-   (masuk ke produk, masalah → solusi, klaim → CTA), brand warna-warni
-   menuntut ritme warna, atau aksi di layar memang mengubahnya (toggle
-   dinyalakan, benda menutup lensa, ikon membesar memenuhi frame). Yang
-   dijaga hanya dua: pergantian punya pemicu yang terlihat (wipe, benda, aksi
-   UI, push ke bidang warna, cut di ketukan) — bukan cross-fade tanpa sebab
-   yang terasa "ganti slide" — dan latar tidak dibiarkan satu warna diam
-   hanya karena tidak pernah dipertimbangkan. Rencananya ditulis di style brief.
-6. **Bebas berekspresi.** Hukum-hukum di sini mengunci STRUKTUR (bukan
-   slide), KONTRAS (teks terbaca), dan KEBARUAN (tidak mengulang proyek
-   lain) — bukan ekspresi. Gradien kaya, cahaya, 3D, kedalaman, tekstur,
-   warna berani dianjurkan bila cocok dengan tema. Yang dilarang hanya
-   mengambil default termurah dan mengulanginya: balok datar menyapu, garis
-   melintas, latar flat, kulit proyek lain. Kalau dua pilihan sama-sama
-   memenuhi hukum, pilih yang lebih berani.
-7. **Yang boleh sama di semua pekerjaan:** hukum anti-PPT, rig kamera,
-   determinisme, ritme masuk-keluar asimetris, ukuran teks minimum.
+A common failure is generating an opener that looks identical to previous projects (dark background, blue glow, nebula particles, system font) because assets were inherited from starter defaults. Every product demands its own visual identity.
 
-### Arah gaya (pilih satu; boleh memadukan dua dengan sadar)
+1. **Style brief first, code second.** Complete this brief and confirm it with the user alongside the scene rundown before writing code:
+   - **Theme/Product & 3 emotional adjectives** to evoke.
+   - **Concept & Structural Fingerprint** (for openers/promos): 3 concept candidates from `references/opener-konsep.md`, 1 selected with rationale based on product traits, followed by `concept · scene count · primary hero objects · opening hook · closing payoff`.
+   - **Color Palette**: 1 primary brand color (from logo, icon, or packaging), 1 background tone, 1 accent. List hex values AND their brand origins.
+   - **Display Typography**: Distinctive character font matching the emotion (DO NOT use default Inter, Roboto, Poppins, Montserrat, or Arial) + secondary pairing.
+   - **Text Emphasis**: Choose one emphasis style or none (`none`, `pill`, `under`, `marker`, `box`, `color`, `strike`). Word highlights are optional.
+   - **Background Language per Segment**: Select from the 10 Style Directions or define explicit segment shifts.
+   - **Signature Motion**: A recurring motion motif (object wipe, 3D word roll, floating paper, stroke draw, color block snap).
+   - **Background Motion**: Select one language from `references/techniques.md` §7c.
+   - **Background Surface**: Select from `references/techniques.md` §7d ($\ge 2$ layers, gradient/light/texture/grainy). NEVER flat single color.
+   - **Object Rendering Style**: Select one family from `references/techniques.md` §7e (flat, clay, glossy, glass, isometric, neon).
+   - **Photo Assets** (if concept uses photographic imagery): Define source (user assets, AI generated, or licensed stock) and list required shots.
+   - **Transitions**: Plan which scene cuts require transitions and which use hard cuts; select from §4c based on context.
+   - **One Special Climax Moment**: Pinpoint where the most resource-intensive visual effect occurs (used once).
+2. **Starters are architecture, not styling.** Grey color tokens, system typography, and WebGL starfields in `assets/starter-opener.html` are strictly placeholders. If any appear in the final output, brand derivation was skipped.
+3. **References supply rhythm, not visual skin.** Extract shot pacing, transition types, attention hierarchy, and energy from references. **NEVER copy** palettes, fonts, layouts, decorative motifs, copy, or unique one-off gimmicks. When asked to "make it like this reference", adopt its tempo and motion dynamics while creating the aesthetic entirely from the target brand.
+4. **Differentiation across projects.** Consecutive deliverables must differ in at least 3 of 4 dimensions: color palette, typography, background language, and signature motion. Structural concepts must also differ.
+5. **Backgrounds must not default to dark.** Adapt the backdrop to brand requirements: high-key editorial, pastel blocks, clean cream paper, or photo collages. Furthermore, backgrounds must never be completely static; keep background elements in continuous subtle motion.
+6. **Expressive freedom.** These rules restrict structure (anti-slide), contrast (readability), and originality (anti-cliché) — not visual ambition. Rich gradients, 3D depth, physical textures, and bold color palettes are strongly encouraged when appropriate.
+7. **What may remain consistent**: Anti-PPT rules, camera rig architecture, deterministic timeline math, asymmetric in/out easing, and minimum legibility sizes.
 
-| Arah | Latar | Tipografi | Gerak khas | Cocok untuk |
+### The 10 Style Directions (Select 1, or deliberately blend 2)
+
+| Direction | Background Surface | Typography | Signature Motion | Best Suited For |
 |---|---|---|---|---|
-| Sinematik gelap | gradasi nyaris hitam, partikel/nebula WebGL, bloom hanya di objek | grotesk tebal bersih | push-through, cahaya di depan lensa | alat kreatif, gaming, teknologi |
-| Poster color-block | bidang warna solid besar berganti tiap adegan, tanpa gradasi | display sangat tebal, huruf raksasa terpotong tepi | wipe blok, teks menabrak tepi frame | app konsumen, musik, event |
-| Editorial terang | putih/krem, ruang kosong luas, garis tipis | serif display + grotesk kecil | geser halus, garis menggambar, kamera tenang | produktivitas, finansial, SaaS |
-| Kertas & cetak | tekstur kertas, potongan kolase, stempel, selotip | tulisan tangan + serif | benda terbang lalu mendarat, sudut miring | edukasi, komunitas, kuliner |
-| Retro / analog | warna pudar, grain, garis scan, bingkai VHS | geometris 70–90-an | glitch terkendali, zoom kasar, freeze | nostalgia, musik, hiburan |
-| Brutalis mono | hitam-putih, grid keras, kotak bergaris | monospace + kondensasi | cut keras, blok bergeser, kursor berkedip | developer tools, teknis |
-| Pastel ceria | pastel bertumpuk, bentuk bulat besar | rounded sans tebal | mantul elastis, bentuk mekar | anak, kesehatan, lifestyle |
-| Mewah gelap | hitam + emas/perunggu, bayangan lembut, kilau | serif tinggi berspasi lebar | gerak lambat, sinar menyapu, kedalaman | fashion, otomotif, properti |
-| Flat pop berfoto | netral terang bergantian dengan medan warna brand user yang solid; bentuk flat dan stiker turunan geometri logo user + ilustrasi 3D lembut | sans geometris membulat tebal + kata raksasa terpotong tepi | foto orang potongan pop dari bawah, stiker meletup elastis, medan warna menyapu/snap di ketukan | app konsumen, fintech, e-commerce, brand anak muda |
-| Grainy gradient | dasar gelap/warna dalam; bentuk bergradien jenuh 2–3 warna yang bercahaya dari dalam; butiran halus di seluruh frame | grotesk bersih kecil, atau display tebal minimal | lapisan bentuk membuka/berputar pelan, kamera menembus lubang bentuk, bola cahaya pemandu | tech, AI, musik, fintech, peluncuran kreatif |
+| Cinematic Dark | Deep near-black gradient, WebGL particles, bloom on objects only | Clean, bold grotesk | 3D push-through, lens flares | Developer tools, gaming, tech |
+| Poster Color-Block | Large solid color planes shifting per beat, zero gradients | Ultra-heavy display, giant cropped typography | Hard block wipes, typography hitting frame borders | Consumer apps, music, events |
+| Editorial Light | Crisp white/cream, expansive negative space, delicate hairlines | Display serif + small grotesk | Smooth drifts, drawing line strokes, calm camera | Productivity, finance, SaaS |
+| Paper & Print | Authentic paper fibers, collage clippings, rubber stamps, tape | Expressive handwriting + serif | Cutouts drifting and landing at angles | Education, community, culinary |
+| Retro / Analog | Desaturated tones, grain, scanlines, subtle VHS borders | 70s–90s geometric sans | Controlled glitch, stepped zoom, freeze frames | Nostalgia, entertainment, music |
+| Brutalist Mono | High-contrast monochrome, strict grids, wireframe borders | Technical monospace + condensed | Snapping hard cuts, shifting text blocks, cursor blinks | Developer infrastructure, technical tools |
+| Pastel Playful | Layered pastel hues, generous rounded geometry | Heavy rounded sans | Elastic overshoot, blooming organic forms | Children, wellness, lifestyle |
+| Luxury Dark | Obsidian black + metallic gold/bronze, soft ambient shadows | High-contrast, wide-spaced serif | Slow-motion glides, sweeping highlights, deep z-space | High-end fashion, luxury automotive, architecture |
+| Flat Pop Photo | Crisp neutrals alternating with vibrant brand fields; vector stickers | Heavy geometric sans + cropped giant hero words | Character cutouts popping up, snapping stickers, color snap | Consumer fintech, e-commerce, youth brands |
+| Grainy Gradient | Deep base tone; rich saturated glowing gradients; uniform fine film grain | Clean micro-grotesk or minimal heavy display | Morphing gradient layers, camera traveling through portals, guide orb | Deep tech, AI, music, creative tools |
 
-Dua opener berturut-turut memakai baris tabel yang sama = tanda bahaya;
-pilih baris lain atau padukan dua baris dengan cara yang belum dipakai.
+## Law #4 — Text Is Alive, Background Is Subordinate
 
-## Hukum #4 — Teks hidup, latar tunduk
+Two openers built on identical camera rigs can succeed or fail entirely on typographic execution and contrast.
+- **Bad**: All-caps bold 800 titles centered in every scene, entering with identical character staggers over high-luminance background glows that wash out letters.
+- **Good**: Sentence case weight 500–600, clear focal emphasis on key phrases, punctuation used only when semantically required, alternating scale and layout positions, with a quiet, high-contrast pocket beneath the text.
 
-Dua opener dengan rig yang sama bisa berakhir sangat baik atau sangat buruk
-hanya karena tipografi dan kontrasnya. Yang buruk: setiap judul KAPITAL
-SEMUA bobot 800 di tengah, masuk dengan cara yang sama, di atas ladang cahaya
-putih yang lebih terang daripada hurufnya. Yang baik: sentence case bobot
-500, penekanan pada kata kunci (mis. pill + bintang — itu tanda tangan
-satu proyek, bukan aturan; sorotan kata sendiri opsional), tanda baca
-hanya bila perlu, ukuran/arah/
-posisi bergantian, latar tenang di bawah teks, latar berganti mengikuti
-segmen. Resep lengkap dengan kode: `techniques.md`
-bagian 1 dan 1b. Ringkasnya:
+Key Typographic Guidelines (see `references/techniques.md` §1 & §1b):
+- **Sentence case at weight 500–600**. Reserve all-caps heavy weights for at most one high-impact scene.
+- **Titles and claims default to NO trailing periods** — especially short phrases ($\le 4$ words). Use `?` only for genuine questions, and periods only when deliberately establishing a staccato cadence across two short statements.
+- **Word highlights are OPTIONAL** (`pill`, `under`, `marker`, `box`, `color`, `strike`). When omitted, establish emphasis via word-by-word opacity reveals, scale contrast, pauses, or adjacent product icons. When used, define one style in the brief and apply consistently.
+- **Alternating composition**: Consecutive scenes MUST NOT use identical text sizes, screen coordinates, or entrance vectors.
+- **Contrast requirement**: Directly beneath text nodes, background luminance must be distinctly dark ($\le 25\%$) or distinctly light ($\ge 80\%$). Avoid muddy mid-tones behind copy. Keep bright background particles dim ($\le 0.35$ opacity in text zones, $\le 40$ bright elements visible).
 
-- Sentence case bobot 500–600. Kapital-tebal hanya untuk satu adegan penekanan.
-- Judul, klaim, dan frase pendek DEFAULT TANPA TITIK — terutama frase ≤ 4 kata
-  dan kalimat satu baris. Tanda baca hanya bila mengubah arti atau irama: `?`
-  untuk pertanyaan sungguhan, titik untuk gaya dua kalimat pendek berturut-turut
-  yang disengaja, `!` sangat jarang. Gaya tanda baca diputuskan sekali di style
-  brief dan konsisten; bila dipakai, ia elemen terpisah yang muncul terakhir.
-- Sorotan kata (pill, garis bawah, marker, kotak, warna, coret) OPSIONAL dan
-  diputuskan di style brief. Tanpa sorotan pun kalimat tetap punya penekanan:
-  kata per kata dari redup ke penuh, ukuran/bobot, jeda, atau objek (ikon,
-  UI) yang berdiri di samping kata. Bila dipakai: satu bentuk per video,
-  tidak wajib di setiap kalimat, berbeda dari proyek lain; ornamen hanya bila
-  diturunkan dari bentuk brand.
-- Dua adegan berturut-turut tidak boleh sama dalam ukuran, arah masuk, dan
-  posisi teks.
-- Di KANTONG TEKS (bukan seluruh frame), latar harus GELAP (≤ 25 %
-  luminance) atau TERANG (≥ 80 %), tidak pernah "ramai sedang". Di luar
-  kantong, latar justru harus kaya: gradien, cahaya, tekstur (§7d) — flat
-  satu warna ditolak. Elemen latar apa pun (partikel, bentuk,
-  tekstur, garis): warna dari sisi gelap palet, opacity ≤ .35 di kantong
-  teks, ≤ 40 elemen terang terlihat.
-- Pertimbangkan selang-seling gelap–terang bila segmennya memang berganti
-  mood; bukan kewajiban mekanis.
+## Standard Workflow
 
-## Alur kerja
+0. **Identify Category** (see Project Categories table).
+   - If an **Explainer** $\rightarrow$ Open `references/explainer.md` and execute "Step Zero": ask ONE structured question establishing style (5 options + recommendation), aspect ratio, duration, and audio setup.
+   - For all other formats $\rightarrow$ Ask only essentials not deducible from the user brief (ratio, target duration, audio/VO availability).
+0b. **Draft Style Brief** (Law #3) and present it with the structural rundown. **Do not write code until the style brief is approved.**
+1. **Extract Reference Rhythm & Brand Assets**:
+   - If reference media is supplied, analyze its shot lengths, movement styles, and visual pacing (rhythm only, Law #3).
+   - Extract official logos (use real vector paths, do not synthesize approximations), brand color tokens, and product claims directly from official sources.
+2. **Build Scene Rundown**:
+   - Create a structured table: `Timestamp (s) | Scene # | Spoken Copy / Headline | Visual Action`.
+   - Derive sequence and scene count from the selected concept (`references/opener-konsep.md`). Total length typically 25–40 seconds. Confirm rundown with the user before coding.
+3. **Scaffold Architecture**:
+   - For openers/promos: Copy `assets/starter-opener.html` (1920×1080 stage, `#world` camera rig, state-driven Three.js canvas, GSAP timeline helpers). Immediately replace placeholder colors, fonts, and background layers with style brief specifications.
+   - For explainers: Copy the designated starter (`starter-explainer-kartun`, `-jurnalisme`, `-katalog`, `-sketsa`, `-panggung`, or `starter-explainer`). See `references/architecture.md` for architectural rationale.
+4. **Construct Scenes Iteratively**:
+   - Apply recipes from `references/techniques.md` (directional motion blur on text reveals, 3D word pan, dynamic UI mockups). Use only techniques required by the concept.
+5. **Perform Visual Verification (Inspect Real Frames)**:
+   - You cannot watch video in real time; you must inspect static frames. Capture 6–20 key frames (scene starts, text entrances, climax transitions) using `scripts/snap.mjs` (Puppeteer running over `file://`, zero server required) or manual inspection via `?debug=1`.
+   - Inspect visually: Are elements clipped? Does text overlap? Is text appearing before camera motion finishes? Does it look like a slide deck? Fix issues and re-check.
+   - Do NOT perform full frame-by-frame renders during active development.
+6. **Deliver as a Standalone Double-Clickable `index.html`**:
+   - The final output MUST NOT require a local server or Node environment to view. All CSS and JS must be embedded inline within the file (local `<script type="module" src="...">` files are blocked by CORS on `file://`, whereas inline modules load successfully).
+   - CDN libraries (GSAP, Three.js) and Google Fonts load over HTTPS. Local images and icons use relative paths.
+   - Deliver with no visible player controls (inform user of `?debug=1` for manual timeline scrubbing).
+   - **Render MP4 ONLY when explicitly requested** (`scripts/export-frames.mjs` $\rightarrow$ FFmpeg compilation).
+7. **Explainer Deliverable Requirement**:
+   - The closing handoff message MUST contain the complete voiceover script formatted paragraph-by-paragraph with instructions for the user to record/generate VO audio and return it for synchronization (`references/explainer.md` "Handoff").
 
-0. **Kenali jenisnya** (tabel "Jenis pekerjaan"). Explainer → buka
-   `references/explainer.md` dan ikuti "Langkah nol" di sana: SATU
-   pertanyaan berisi gaya (lima pilihan + rekomendasi), rasio, durasi,
-   suara, plus pagar durasi. Jenis lain → lanjut; tanya hanya hal yang
-   benar-benar tidak bisa diturunkan dari brief (rasio, durasi, ada
-   musik/VO atau tidak), dalam satu pertanyaan.
-0b. **Tulis style brief** (Hukum #3) dan tunjukkan bersama rundown. Tanpa
-   style brief yang disetujui, jangan menyentuh kode.
-1. **Serap referensi & sumber brand.** Minta screenshot/potongan video
-   referensi bila ada; petakan per shot (durasi, gerakan, jenis transisi,
-   urutan atensi) — hanya RITMENYA, bukan kulitnya (Hukum #3). Warna, logo
-   (path vektor ASLI, jangan digambar ulang), font, dan klaim fitur diambil
-   dari sumber resmi PRODUK yang sedang dibuat — bukan dari referensi, bukan
-   dari proyek lain, bukan karangan.
-2. **Tulis rundown dari konsep yang dipilih** — tabel `detik | adegan |
-   kalimat | visual`. Jumlah dan jenis adegan mengikuti konsep
-   (`references/opener-konsep.md`), bukan pola hook → fitur → fitur → janji →
-   logo → CTA. Total 25–40 detik. Minta persetujuan user atas rundown ini
-   sebelum menulis kode; merombak rundown murah, merombak kode mahal.
-3. **Scaffold arsitektur.** Opener/promo/bumper/typography: salin
-   `assets/starter-opener.html` (stage 1920×1080, rig kamera `#world`, scene
-   Three.js ber-state, helper timeline) lalu SEGERA ganti token warna, font,
-   dan bahasa latarnya sesuai style brief — starter sengaja abu-abu. Explainer: salin starter sesuai gaya —
-   `starter-explainer-kartun/-jurnalisme/-katalog/-sketsa.html` (mode
-   kolase: kamera into/settle/look/home di atas cutout/foto, say/unsay per
-   kata, draw anotasi, push-through antar adegan) atau
-   `starter-explainer.html` (aksi kontinu: dunia mengalir, hero, objek
-   dunia, view peta, whip). Semua sudah autoplay + loop tanpa player. Struktur multi-file dan
-   penjelasan tiap keputusan ada di `references/architecture.md`.
-4. **Bangun adegan satu per satu** dengan resep di
-   `references/techniques.md` (split per huruf + motion blur berarah,
-   pan 3D per kata, menu transisi, mockup UI). Resep adalah perkakas, bukan
-   daftar belanja: pakai hanya yang dituntut konsep.
-5. **Verifikasi VISUAL, bukan cuma "kode jalan".** Kamu tidak bisa menonton
-   video; kamu hanya bisa melihat FRAME. Potret 6–20 detik kunci (awal
-   tiap adegan, saat teks muncul, transisi) dengan `scripts/snap.mjs`
-   (puppeteer, buka `file://`, tanpa server), susun jadi lembar kontak, dan
-   nilai seperti sutradara: teks kepotong? tumpang tindih? teks muncul
-   sebelum kamera selesai? masih terasa slide? Perbaiki, potret lagi.
-   JANGAN merender semua frame untuk mengecek — itu ribuan gambar dan bukan
-   verifikasi; render penuh hanya untuk export MP4 (langkah 6) bila user
-   memintanya. Tanpa Node: buka `?debug=1`, scrub manual, screenshot.
-6. **Serahkan sebagai SATU `index.html` yang bisa diklik dua kali.** Output
-   akhir tidak boleh butuh server/Node: CSS dan JS ditulis INLINE di dalam
-   berkas (module lokal `<script type="module" src="…">` diblokir CORS saat
-   dibuka lewat `file://`, module inline tidak), library dari CDN, aset
-   (ikon/gambar) relatif di folder yang sama. Server no-cache
-   (`scripts/serve.py`) hanya alat KERJA saat mengedit, bukan syarat
-   menonton. Tanpa player di layar (lihat "Player"); sebutkan `?debug=1`
-   untuk scrub. **Export MP4 hanya bila user memintanya**: `scripts/
-   export-frames.mjs` merender tiap frame (60 fps) ke PNG lalu ffmpeg
-   menggabungkannya — cara ini bebas frame drop, tapi mahal, jadi bukan
-   langkah rutin dan bukan alat pengecekan.
+## Pre-Delivery Quality Checklist
 
-7. **Khusus explainer: naskah VO + ajakan merekam** — pesan penutup wajib
-   memuat naskah VO lengkap dan meminta user merekam/generate lalu mengirim
-   ulang audionya untuk disinkronkan. Detail bentuk naskah, petunjuk rekam,
-   dan retime di `references/explainer.md` → "Penyerahan".
+- [ ] **Style brief completed and confirmed** (theme, brand palette, character display font, background language, signature motion, climax moment) before coding.
+- [ ] **All starter placeholders removed**: No default grey colors, system fonts, or unneeded WebGL starfields.
+- [ ] **Visual distinction verified**: Output differs from previous deliverables in palette, font, background language, and motion signature.
+- [ ] **Original concept structure**: Selected from `references/opener-konsep.md`; unique structural fingerprint; maximum of two canonical components used.
+- [ ] **Living UI demonstration (for SaaS/Apps)**: UI components assemble, animate, and demonstrate workflows dynamically — never just a zooming flat screenshot.
+- [ ] **Living Typography (Law #4)**: Sentence case at weight 500–600; clear hierarchy; no default trailing periods; alternating layout coordinates and entrance angles across scenes.
+- [ ] **Subordinate Backgrounds (Law #4)**: Text zone luminance $\le 25\%$ or $\ge 80\%$; low particle opacity behind text; passes grayscale contrast checks.
+- [ ] **Contextual Transitions**: Transitions placed only where narratively warranted; no generic full-screen wipes; motion velocities and eases tuned.
+- [ ] **Layered Background Surfaces**: $\ge 2$ surface layers (base + gradient/texture/lighting); brand-aligned hues; no flat solid backgrounds.
+- [ ] **Photographic Assets Verified**: Licensing and generation methods agreed with user; cutouts animated with pop/parallax rather than plain Ken Burns zooms.
+- [ ] **Living Motion on Background**: Background moves continuously in every scene; color shifts have clear visual triggers.
+- [ ] **Passes all 6 Structural Anti-PPT Checks**: No sequential autoAlpha sections; persistent visual thread; max 2 text tiers; continuous secondary motion; varied transitions; correct starter architecture.
+- [ ] **Seamless Playback**: Zero player UI; autoplays and loops cleanly; `?debug=1` exposes scrub slider.
+- [ ] **Active Camera & Framing**: Wide $\leftrightarrow$ medium close-up $\leftrightarrow$ close-up framing shifts prevent dead pauses. Overlay labels stay outside the moving rig.
+- [ ] **Directional Motion Blur**: Applied via SVG filter to all text entrances and exits.
+- [ ] **Object-Only Glow**: Glow effects applied strictly to hero objects, icons, and UI accents; text headlines remain crisp and clean.
+- [ ] **Zero Non-Deterministic Code**: No `Date.now()`, `performance.now()`, or `Math.random()` in render paths.
+- [ ] **Visual Snapshot Verification Completed**: Inspected key frames via `scripts/snap.mjs` or `?debug=1`.
+- [ ] **Audio Autoplay Fallback Tested**: Pauses cleanly on frame 0 if autoplay is blocked, resuming on first interaction.
+- [ ] **Double-Clickable Output**: Runs cleanly from `file://` with inline CSS/JS and no broken local imports.
+- [ ] **Tabular Numerals**: Numbers that change per frame use `font-variant-numeric: tabular-nums` and fixed minimum container widths.
 
-## Checklist sebelum menyerahkan
+## Traps and Known Pitfalls
 
-- [ ] Style brief (tema, palet dari brand, font display berkarakter, satu
-      bahasa latar, tanda tangan gerak, momen istimewa) ditulis dan disetujui
-      SEBELUM kode
-- [ ] Tidak ada sisa placeholder starter (abu-abu, font sistem, nebula bila
-      arah gayanya lain) dan tidak ada kulit referensi yang disalin (palet,
-      font, tekstur, tata letak, kalimat)
-- [ ] Berbeda dari opener/promo sebelumnya: minimal tiga dari palet, font,
-      bahasa latar, tanda tangan gerak
-- [ ] Opener/promo: tiga kandidat konsep ditulis dan satu dipilih; sidik jari
-      struktur tertulis dan berbeda dari opener sebelumnya; paling banyak dua
-      komponen kanonik (teks zoom → keluar kiri, tiga tile, input diketik,
-      push-through, light leak, logo + CTA di tengah), masing-masing dituntut
-      konsep (`references/opener-konsep.md`); tidak menyalin contoh konsep
-      (pembuka/penutup berbeda dari contohnya, ≤ 1 momen ✦ yang ditransformasi,
-      palet dan bentuk dari brand user)
-- [ ] App/SaaS: minimal satu babak UI hidup — dirakit, dipakai, menghasilkan —
-      dari komponen produk user, bukan screenshot diam yang di-zoom
-      (`references/opener-konsep.md` bagian animasi UI); bila demo terasa
-      statis, klik penting diikuti kamera (dekat → klik → mundur/geser),
-      tidak di setiap klik (`techniques.md` §8)
-- [ ] Teks hidup (Hukum #4): sentence case bobot 500–600, penekanan jelas,
-      tanpa titik otomatis (tanda baca hanya bila mengubah arti/irama),
-      ukuran/arah/posisi bergantian antar adegan;
-      kapital-tebal hanya di satu adegan. Sorotan kata hanya bila style brief
-      memilihnya (bukan otomatis di setiap kalimat, bukan pill + bintang
-      warisan proyek lain)
-- [ ] Latar tunduk (Hukum #4): di bawah teks luminance ≤ 25 % atau ≥ 80 %,
-      elemen latar redup dan berwarna gelap di kantong teks; uji grayscale —
-      tidak ada latar seterang huruf
-- [ ] Transisi dipilih pada batas yang membutuhkan; tidak otomatis semua
-      batas diberi efek atau semua efek dihapus. Objek penyapu punya makna
-      dalam adegan; kecepatan, amplitudo, dan jeda sudah diperiksa.
-- [ ] Permukaan latar dari menu §7d: ≥ 2 lapis (dasar + cahaya/tekstur/
-      blob), warna dari palet — tidak flat satu warna, bukan hitam/putih murni
-- [ ] Gaya render objek satu keluarga (§7e), atau pergantiannya dijadikan momen
-- [ ] Opener berfoto: sumber foto disepakati user (foto user / generate MCP /
-      stok berlisensi), wajah fiktif bila di-generate, logo/teks brand ditambahkan
-      di kode, foto dianimasikan (pop, parallax, wadah) — bukan Ken Burns saja
-- [ ] Bila memakai grainy gradient/butiran: butiran masih terlihat di MP4 hasil encode
-      dan gradien tidak banding
-- [ ] Bila memakai video: klip dipasang lewat `clip()` (tanpa `autoplay`/`loop`), dibungkus
-      elemen yang dianimasikan, sumbernya disepakati user, folder `assets/` disebutkan saat
-      penyerahan, dan detik yang berisi klip sudah dipotret (`snap.mjs`)
-- [ ] Gerak latar dipilih dari menu §7c dan BERBEDA dari proyek sebelumnya;
-      tidak ada batang/garis melintas ke samping kecuali tema kecepatan/
-      aliran dan belum dipakai di proyek sebelumnya
-- [ ] Latar bergerak di setiap adegan (tidak ada latar diam); pergantian warna
-      latar boleh kapan dibutuhkan asal punya pemicu terlihat
-- [ ] Lolos 6 poin "Larangan struktural" (bukan section yang di-fade, ada
-      benang merah visual, ≤ 2 tingkat teks, gerak tiap detik, transisi
-      bervariasi, starter yang benar)
-- [ ] Tanpa player di layar; autoplay; loop; `?debug=1` untuk scrub
-- [ ] Opener: satu gagasan utama tanpa tumpukan badge; explainer: satu
-      peristiwa dapat memuat beberapa beat dan objek yang saling berhubungan.
-- [ ] Kamera, cut, dan gerak objek dipilih sesuai konteks; tidak ada keharusan
-      menggerakkan kamera di tiap segmen. Saat kamera bergerak, seluruh dunia ikut.
-- [ ] Tidak ada hold panjang yang mati: babak tanpa aksi objek yang besar mendapat
-      perubahan ukuran shot ke elemen (wide ↔ medium close-up ↔ close-up) atau push pelan;
-      napas kamera saja tidak dihitung. Label layar di luar rig, tidak terpotong zoom
-- [ ] Motion blur berarah pada semua teks masuk/keluar
-- [ ] Latar lahir dari tema (tidak otomatis gelap; terang bisa gradien,
-      warna lembut, blok warna, kertas), punya kedalaman (bukan satu warna
-      flat), TIDAK lebih ramai daripada subjek; pergantian latar diputuskan
-      per segmen di style brief dan, bila ada, terjadi di balik wipe/cut
-- [ ] Glow dipakai pada objek (tile, bar, ikon dekor) — judul teks BERSIH
-      (putih penuh + drop shadow tipis), kecuali user minta sebaliknya
-- [ ] Font display ≠ font mockup UI; mockup memakai font produk aslinya
-      (konsep klaim → cara → hasil: seluruh teks memakai font UI produk)
-- [ ] Nol pemakaian `Date.now()` / `Math.random()` di jalur render
-- [ ] Sudah dipotret di detik kunci (snap.mjs / ?debug=1) dan dilihat dengan
-      mata — bukan render penuh; MP4 hanya bila diminta
-- [ ] Ada suara? Halaman menahan di frame awal bila autoplay diblokir dan mulai
-      bersama suara pada gestur pertama — tidak pernah mulai tanpa suara; tanpa
-      file peluncur (`.cmd`/`.bat`)
-- [ ] Explainer kolase: kamera punya koreografi (close-up → meluncur → zoom
-      out), bukan hanya elemen in/out — lihat explainer.md "Kamera explainer".
-      Kartun panggung: tidak ada frame dengan zoom < 1,08; kamera hanya
-      bergerak di dalam panggung; antar panggung cut atau geser 96/72 px
-- [ ] Kartun panggung: sendi diputar lewat proxy transform manual (tidak ada
-      `transformOrigin`/`rotation` GSAP pada sendi, tidak ada tween `x/y`
-      pada grup ber-`translate`); tiap panggung ≥10 benda bergerak; nol
-      caption; kepala raster punya varian kedip + ekspresi
-- [ ] Build lewat bridge AE: CAM di-nol-kan sebelum parenting, semua layer dunia
-      ber-parent ke CAM, layer dibuat belakang → depan, keyframe bagian tubuh
-      dalam ruang induk, contact sheet tiap panggung + master sudah dilihat,
-      pesan penutup memuat Ctrl+S + hapus comp uji + perintah aerender
-      (`references/ae-bridge-higgsfield.md`)
-- [ ] Explainer: pesan penutup memuat naskah VO lengkap + ajakan merekam /
-      generate sendiri dan mengirim ulang audionya untuk disinkronkan;
-      `vo-script.md` tersimpan di folder proyek
-- [ ] Explainer: gaya, rasio, durasi, dan suara sudah ditanya dalam SATU
-      pertanyaan (kecuali yang sudah disebut user) sebelum menulis kode;
-      durasi mengikuti brief/VO; jumlah adegan mengikuti konteks, bukan durasi ÷ 6
-- [ ] Rasio default 16:9 / mengikuti layar; 9:16 hanya bila diminta. Tanpa
-      subtitle/caption kecuali diminta. Tata letak referensi (panel, subtitle)
-      tidak disalin — hanya prinsipnya
-- [ ] Explainer topik aksi/kecepatan: satu subjek hadir dari awal sampai
-      akhir, latar terus mengalir, angka hidup di dalam dunia (subjek
-      melintas di depannya) — lihat explainer.md "Gaya kelima: aksi kontinu"
-- [ ] Sudut pandang berganti: tidak ada tiga adegan berturut-turut dengan
-      sudut yang sama; tiap fakta dapat instrumennya (speedometer, peta,
-      profil ketinggian, balapan peta, interior, tampak depan) — lihat
-      explainer.md "Sudut pandang WAJIB berganti"; kamera bernapas
-- [ ] Tidak ada teks di bawah 30 px pada panggung 1080 (body ≥ 44, label ≥ 34,
-      kredit ≥ 30) — ditonton di HP; teks hantu & anotasi bervariasi, bukan
-      selalu outline / lingkaran putus-putus
-- [ ] Explainer: tiap orang/perusahaan/tempat/produk yang DISEBUT tampil
-      fotonya di adegan itu (lihat explainer.md → "Entitas yang disebut")
-- [ ] `index.html` terbuka langsung lewat `file://` (klik dua kali) tanpa
-      server — CSS/JS inline, tidak ada `src` module lokal
-- [ ] Angka yang berubah tiap frame (jam, counter) memakai
-      `font-variant-numeric:tabular-nums` + `min-width` supaya wadahnya
-      tidak berubah lebar
+Detailed remedies in `references/techniques.md` ("Pitfalls"):
+- **Low Bloom Threshold**: Screen washes out to white (keep threshold appropriately balanced).
+- **Additive Particle Blending**: Nebulae stack up and blow out through post-processing bloom.
+- **CSS Selector Specificity Clashes**: A higher-specificity selector overrides initial `opacity: 0`, revealing elements before GSAP initializes.
+- **Browser Module Caching**: Edits appear ignored when running standard web servers (use `scripts/serve.py` with `Cache-Control: no-store`).
+- **Planar 3D Geometry**: Flat 3D meshes rotated $90^\circ$ on the Y-axis collapse into a thin line (wobble slightly; do not rotate fully flat to camera).
+- **SVG Filter Clipping**: Default SVG filter bounding boxes clip directional blur trails (expand `x`, `y`, `width`, `height` filter bounds).
 
-## Jebakan yang sudah memakan korban
+## Direct After Effects Build via Higgsfield MCP Bridge
 
-Detail dan perbaikannya di `references/techniques.md` bagian "Jebakan":
-bloom threshold rendah → layar putih; nebula additive → menumpuk lewat bloom;
-selector CSS lebih spesifik mengalahkan state awal `opacity:0` → elemen
-muncul mendahului animasinya; module JS di-cache browser → edit "tidak
-ngefek" (pakai server `Cache-Control: no-store`); objek 3D pipih diputar
-penuh di sumbu Y → jadi sebatang garis (goyangkan, jangan putar penuh);
-kotak filter SVG default memotong ekor blur (lebarkan `x/y/width/height`).
+When After Effects is running, the Higgsfield `ae_*` MCP bridge is connected, and the user requests an explainer built **directly in AE**, execute the build directly through bridge tools:
+- Consult `references/ae-bridge-higgsfield.md`.
+- Build composition skeleton using a minimal Lottie file; create dedicated `CAM` null layers per stage (reset anchor and position to `[0,0]` **BEFORE** parenting).
+- Generate vector illustration assets from code $\rightarrow$ SVG $\rightarrow$ 2× PNG (`scripts/ae/bridge/aset-svg.py` + `svg2png.cjs`).
+- Assemble jointed character rigs natively (`scripts/ae/bridge/rig-tokoh.py`, $\sim 90$ atomic operations per character).
+- Animate body parts within their local parent space.
+- Verify compositions via contact sheet exports.
+- Remind user to press `Ctrl+S` (bridge cannot save project files) and render final video via AE Render Queue or `aerender.exe`.
 
-## After Effects — langsung lewat bridge Higgsfield
+## Repository Package Reference
 
-Bila After Effects sudah terbuka, MCP bridge `ae_*` Higgsfield tersambung, dan user
-meminta animasi/explainer dibangun di AE, bangun langsung lewat perintah bridge. Baca
-`references/ae-bridge-higgsfield.md`: kerangka comp lewat satu Lottie kecil, null
-`CAM` per panggung (anchor & position di-nol-kan SEBELUM parenting), ilustrasi
-dari SVG-kode → PNG 2× (`scripts/ae/bridge/aset-svg.py` + `svg2png.cjs`), karakter
-sebagai shape asli AE bersendi (`scripts/ae/bridge/rig-tokoh.py`, ±90 op per tokoh),
-keyframe bagian tubuh dalam ruang induk, verifikasi lewat contact sheet (relay
-bila r2.dev diblokir). Hukum kartun panggung tetap berlaku penuh. Bridge tidak
-bisa menyimpan/merender dan tidak bisa menyusun ulang urutan layer — sebutkan itu
-dan buat layer dari belakang ke depan. Build 10 panggung ≈ 1 jam, 0 kredit.
-
-## Isi paket
-
-| Berkas | Kapan dibaca |
+| File | When to Consult |
 |---|---|
-| `references/kartun-panggung.md` | KARTUN PANGGUNG: satu panggung per adegan, kamera ≥1,08, cut/geser 96 px, rig sendi + transform manual, kepala raster + ekspresi lokal, nol caption, palet flat |
-| `assets/starter-explainer-panggung.html` | EXPLAINER kartun panggung: sistem panggung + kamera per panggung, `J()` sendi, `character()` (kepala vektor atau raster), whoosh 96 px, contoh dua panggung |
-| `scripts/kepala-ekspresi.py` | kepala hasil generate → varian senang/cemas/kaget + kedip, dibuat lokal (deteksi pupil & mulut) |
-| `references/ae-bridge-higgsfield.md` | BRIDGE: membangun kartun panggung langsung di AE lewat MCP Higgsfield — batas bridge, jebakan (null 960,540; parent ke CAM berkeyframe; reorder rusak), arsitektur CAM per panggung, rig native, relay contact sheet, penyerahan |
-| `scripts/ae/bridge/aset-svg.py`, `svg2png.cjs`, `rig-tokoh.py` | BRIDGE: aset ilustrasi dari kode → SVG + manifest → PNG 2× (puppeteer); generator ±90 op `ae_batch` untuk satu karakter bersendi |
-| `references/anti-ppt.md` | sebelum mendesain adegan |
-| `references/opener-konsep.md` | OPENER/PROMO sebelum rundown: tiga kandidat konsep, menu 19 konsep (termasuk estafet benda, pamer sistem brand, klaim → cara → hasil, ekosistem UI hidup, pop flat berfoto, menembus bentuk bergradien, dan tur produk berselang klaim, semuanya diturunkan dari layanan/aset/produk brand), panduan layout-warna-ritme, panduan animasi UI untuk app/SaaS, panduan foto dalam opener (input user / generate via MCP), menu fitur, pembuka, penutup, transisi tanpa cut yang dibawa objek, sidik jari struktur — mencegah kerangka template |
-| `references/explainer.md` | bila yang diminta explainer/video penjelasan (kartun+VO, jurnalisme visual foto, katalog putih, sketsa vintage, atau aksi kontinu; default 16:9, 9:16 hanya bila diminta) |
-| `references/architecture.md` | saat scaffold / butuh alasan di balik struktur |
-| `references/techniques.md` | saat membangun adegan & efek (termasuk ukuran shot §3b, grainy gradient §7d, menu gaya render objek §7e, dan video sebagai layer footage §9b) |
-| `references/roadmap.md` | saat mengembangkan skill ini lebih lanjut |
-| `assets/starter-opener.html` | titik awal OPENER/promo — arsitektur + perkakas (8 pintu teks, transisi opsional); SENGAJA tanpa urutan adegan contoh, kerangka dari `opener-konsep.md` |
-| `assets/starter-explainer.html` | EXPLAINER gaya aksi kontinu (vektor): mode aliran (strip + hero + objek dunia) + view peta + whip + contoh mode kolase |
-| `assets/starter-explainer-kartun.html` | EXPLAINER kartun kolase: kertas krem + grain + noda, cutout ilustrasi, Bricolage + Caveat, pill warna |
-| `assets/starter-explainer-jurnalisme.html` | EXPLAINER jurnalisme visual: hitam + grain, foto asli + tag sumber, Barlow Condensed + Plex Mono, highlighter kuning/merah, anotasi putus |
-| `assets/starter-explainer-katalog.html` | EXPLAINER katalog putih: grid samar, cutout foto, Archivo Black + Caveat + Inter, highlighter kuning |
-| `assets/starter-explainer-sketsa.html` | EXPLAINER sketsa vintage: kertas sepia (tekstur CSS), cutout ukiran multiply, Playfair + Garamond + Cinzel, karat & emas |
-| `scripts/serve.py` | dev server no-cache (opsional, butuh Python; hanya bila memakai module lokal) |
-| `scripts/snap.mjs` | VERIFIKASI: potret detik kunci → lembar kontak (opsional, butuh Node + puppeteer) |
-| `scripts/vo-pauses.html` | deteksi jeda VO di browser (pengganti ffmpeg silencedetect, tanpa instal) |
-| `scripts/export-frames.mjs` | EXPORT: render semua frame → MP4, hanya bila diminta (opsional, butuh Node + puppeteer + ffmpeg) |
+| `references/anti-ppt.md` | **Mandatory** before designing any scene: comprehensive violation-to-fix rules and slide-deck prevention principles. |
+| `references/opener-konsep.md` | **Mandatory** for openers/promos: 19 structured concept blueprints, UI animation guidelines, transition mechanics, and structural fingerprints. |
+| `references/explainer.md` | **Mandatory** for explainers: the 6 explainer styles, step-zero intake questions, VO synchronization, collage vs. continuous action modes. |
+| `references/kartun-panggung.md` | **Mandatory** for Cartoon Stage explainers (Style 6): stage camera limits ($\ge 1.08$), jointed puppet hierarchy, manual proxy transforms, zero captions. |
+| `references/architecture.md` | When scaffolding new projects or inspecting structural decisions: `#world` camera rig, state-driven Three.js, deterministic timelines. |
+| `references/techniques.md` | When implementing animations and visual effects: typography formulas, directional blur filters, shot scaling, background motion menus, and UI mockups. |
+| `references/ae-bridge-higgsfield.md` | When building cartoon explainers directly inside Adobe After Effects via the Higgsfield MCP bridge. |
+| `references/roadmap.md` | Reference for architectural evolution, design rationale, and expanding skill capabilities. |
+| `assets/starter-opener.html` | Base code template for openers, promos, bumpers, and kinetic typography. |
+| `assets/starter-explainer.html` | Base template for continuous action vector explainers (flowing world + map views). |
+| `assets/starter-explainer-kartun.html` | Base template for cartoon collage explainers (cream paper texture, cutouts, marker pills). |
+| `assets/starter-explainer-jurnalisme.html` | Base template for visual journalism explainers (monochrome paper, photo cutouts, highlighter markers). |
+| `assets/starter-explainer-katalog.html` | Base template for white catalog explainers (clean white grid, photo cutouts, scribbled notes). |
+| `assets/starter-explainer-sketsa.html` | Base template for vintage sketch explainers (sepia parchment, engraving illustrations, classic serifs). |
+| `assets/starter-explainer-panggung.html` | Base template for cartoon stage explainers (multi-stage system, jointed puppet rigs, diegetic labels). |
+| `scripts/serve.py` | Local zero-cache development server (`Cache-Control: no-store`). |
+| `scripts/snap.mjs` | Automated visual verification tool: captures keyframe snapshots into a contact sheet via Puppeteer. |
+| `scripts/vo-pauses.html` | Browser-based voiceover pause detector for sentence/paragraph marker alignment (zero install). |
+| `scripts/export-frames.mjs` | Automated export pipeline: renders full timeline frame-by-frame for FFmpeg video compilation. |
+| `scripts/kepala-ekspresi.py` | Character expression generator: generates blink, happy, anxious, and surprised facial variations from a single face image. |

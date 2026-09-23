@@ -1,188 +1,149 @@
-# Arsitektur — struktur proyek dan alasannya
+# Architecture — Project Structure and Design Rationale
 
-Tiap keputusan di sini pernah salah dulu sebelum benar. Bagian "kenapa"
-lebih penting daripada kodenya.
+Every decision documented here originated from real development errors before finding the correct solution. Understanding the **why** behind each choice is more critical than the code snippets themselves.
 
-## Struktur berkas
+## Directory Structure
 
 ```
-proyek/
-├── index.html          markup semua adegan + filter SVG motion blur
-├── css/app.css         token warna, layout adegan, state awal tersembunyi
-├── js/three-scene.js   dunia WebGL ber-state (latar, partikel, ornamen, bloom)
-├── js/timeline.js      SATU-SATUNYA tempat waktu ditulis (GSAP master timeline)
-├── js/util.js          splitChars + blurTween (motion blur berarah)
-├── js/main.js          perekat: fit stage, loop render, panel kontrol
+project/
+├── index.html          Markup for all scenes + SVG motion blur filters
+├── css/app.css         Color tokens, scene layouts, initial hidden states
+├── js/three-scene.js   State-driven WebGL world (background, particles, ornaments, bloom)
+├── js/timeline.js      The SOLE location where time is defined (GSAP master timeline)
+├── js/util.js          splitChars + blurTween (directional motion blur)
+├── js/main.js          Glue: stage fitting, render loop, developer panel
 └── tools/
-    ├── serve.py        dev server Cache-Control: no-store
-    └── export-frames.mjs  render frame-by-frame (puppeteer)
+    ├── serve.py        Local zero-cache dev server (Cache-Control: no-store)
+    └── export-frames.mjs Frame-by-frame exporter (Puppeteer)
 ```
 
-Boleh dipadatkan jadi satu berkas (lihat `assets/starter-opener.html`) untuk
-prototipe; pecah ke struktur di atas begitu adegan > 3.
+For rapid prototypes, this can be bundled into a single file (see `assets/starter-opener.html`). Split into the modular structure above when a project exceeds 3 complex scenes.
 
-## Panggung: 1920×1080 dipatok, lalu di-scale
+## Fixed Stage: 1920×1080 Scaled Uniformly
 
 ```css
-#stage{position:fixed;left:50%;top:50%;width:1920px;height:1080px;
-  transform:translate(-50%,-50%) scale(var(--fit));overflow:hidden}
+#stage {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  transform: translate(-50%, -50%) scale(var(--fit));
+  overflow: hidden;
+}
 ```
 ```js
-const s = Math.min(innerWidth/1920, innerHeight/1080);
+const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+document.documentElement.style.setProperty('--fit', s);
 ```
 
-**Kenapa:** komposisi tidak boleh berubah karena ukuran jendela. Posisi yang
-disetujui di monitor 27" harus identik saat direkam. Ukuran jendela hanya
-mengubah zoom, bukan layout.
+**Why**: Visual compositions must never alter based on browser window dimensions. A layout approved on a 27-inch desktop monitor must render bit-for-bit identical when recorded or played on smaller displays. Window dimensions should scale zoom level only, never responsive layout flows.
 
-## Rig kamera `#world`
+## Camera Rig: `#world`
 
 ```
 #stage
-└── #world            ← rig kamera: DI-SCALE/TRANSLATE oleh timeline
-    ├── <canvas>      ← WebGL (latar 3D)
-    ├── .bgfx         ← gradient overlay (blend screen)
-    └── #dom          ← semua adegan teks/UI
-├── .leak             ← light leak: DI LUAR world, lapisan paling atas
-├── .vignette, .grain
+└── #world            ← Camera rig: SCALED and TRANSLATED by the timeline
+    ├── <canvas>      ← WebGL (3D background, particle systems)
+    ├── .bgfx         ← Gradient overlays (blend-mode: screen)
+    └── #dom          ← All text and UI scenes
+├── .leak             ← Light leaks: OUTSIDE the world, top-most viewport layer
+├── .vignette, .grain ← Screen-space camera lens textures
 ```
 
-**Kenapa world membungkus canvas juga:** saat kamera zoom, yang ikut membesar
-harus teks DAN latarnya.
-Men-zoom layer teks saja terasa palsu; men-zoom seluruh dunia terasa kamera.
-Light leak justru HARUS di luar world: ia cahaya di depan lensa, bukan
-bagian dunia.
+**Why `#world` encapsulates the canvas**: When the camera zooms into the world, both foreground text AND background environment must scale together in perspective. Zooming text alone creates a fake, synthetic appearance; scaling the entire world feels like an authentic optical camera move.
+Conversely, light leaks, film grain, and lens vignettes **MUST remain outside `#world`**: they represent physical lens artifacts and screen-space phenomena, not objects inside the 3D scene.
 
-## State-driven WebGL
+## State-Driven WebGL Architecture
 
-Scene Three.js tidak tahu apa-apa soal waktu. Ia mengekspos satu objek:
+The Three.js scene must have zero internal concept of time. It exposes a single state object:
 
 ```js
 const state = {
-  grid: 0, dust: .5, nebula: .6, stars: 0, tunnel: 0, flow: 0,
-  camX: 0, camY: 0, camZ: 16, camRoll: 0, bloom: .85, shake: 0,
-  heroO: 0, heroS: 1, heroX: 0, heroY: 0, heroZ: 6,   // ornamen utama
+  grid: 0, dust: 0.5, nebula: 0.6, stars: 0, tunnel: 0, flow: 0,
+  camX: 0, camY: 0, camZ: 16, camRoll: 0, bloom: 0.85, shake: 0,
+  heroO: 0, heroS: 1, heroX: 0, heroY: 0, heroZ: 6,   // Primary hero ornament
 };
 ```
 
-dan timeline GSAP men-tween angka-angka itu. Fungsi `render(t)` menerima
-`t = tl.time()`.
+The GSAP master timeline directly tweens these numerical properties. The WebGL render function receives timeline time: `render(t)` where `t = tl.time()`.
 
-**Kenapa:** satu sumber kebenaran waktu. Scrub, pause, dan export otomatis
-benar karena WebGL tidak punya jam sendiri.
+**Why**: This enforces a single source of truth for time. Scrubbing, pausing, reversing, and frame-by-frame exporting function flawlessly because the WebGL canvas possesses no autonomous clock.
 
-**Aturan `flow`:** benda yang "mengalir" (tunnel, hujan partikel) disimpan
-sebagai JARAK yang di-tween (`flow: '+=300'`), posisi tiap partikel =
-`(seed + flow*speed) % span`. JANGAN `pos += speed*dt` — itu akumulasi yang
-membuat scrub dan export tidak reproducible.
+**The `flow` Rule**: Continuously flowing objects (particle rain, tunnel travel) must be stored as **DISTANCE** tweened over time (`flow: '+=300'`). The position of each particle is calculated deterministically:
+`pos = (seed + flow * speed) % span`.
+**NEVER use accumulation**: `pos += speed * dt`. Accumulation introduces frame-rate variance, breaking scrub predictability and frame-accurate exports.
 
-## Timeline: detik absolut
+## Timeline: Absolute Seconds
 
 ```js
-tl.fromTo(chars, {...}, {...}, 8.10);   // ← angka absolut, bukan "+=0.3"
+tl.fromTo(chars, { ... }, { ... }, 8.10);   // ← Absolute timestamp, NOT "+=0.3"
 ```
 
-**Kenapa:** rundown adegan berisi angka detik; menulis angka yang sama di
-kode membuat urutan terbaca sekali lihat, dan menggeser satu adegan tidak
-merembet ke adegan lain. Sediakan konstanta `DURATION` di satu tempat.
+**Why**: Scene rundowns are structured by absolute timestamps. Writing matching absolute timestamps in code makes the sequence immediately readable at a glance. Shifting the duration of one scene does not accidentally cause unpredictable ripple effects across subsequent scenes. Define a single `DURATION` constant.
 
-## State awal di CSS, bukan di GSAP
+## Initial States in CSS, Not GSAP
 
 ```css
-.hero, .line, .obj, .ornament { opacity: 0 }
+.hero, .line, .obj, .ornament { opacity: 0; }
 ```
 ```js
-tl.fromTo(el, {opacity:0,y:60}, {opacity:1,y:0, immediateRender:false}, 8.1);
+tl.fromTo(el, { opacity: 0, y: 60 }, { opacity: 1, y: 0, immediateRender: false }, 8.10);
 ```
 
-**Kenapa:** dengan `immediateRender:false`, CSS-lah yang memegang keadaan
-sebelum tween mulai — tanpanya semua elemen berkedip di frame pertama.
+**Why**: When paired with `immediateRender: false`, CSS maintains the hidden state of elements before their tween starts. Without this pattern, elements flash on screen during the very first frame before GSAP initializes.
 
-**JEBAKAN yang pernah terjadi:** selector state awal kalah spesifisitas.
-`.card.ghost{opacity:.85}` mengalahkan `.card{opacity:0}` sehingga elemen
-muncul mendahului animasinya. Jangan pernah menulis `opacity` di selector
-yang lebih spesifik dari selector state-awal; biarkan GSAP yang memberi
-nilai akhirnya.
+**KNOWN TRAP**: CSS selector specificity clashes. If `.card.ghost { opacity: 0.85; }` overrides `.card { opacity: 0; }`, the ghost card flashes before its cue. Never define opacity rules in selectors that have higher specificity than the initial hidden state; let GSAP set the final animated property.
 
-## Determinisme — daftar larangan
+## Determinism — Prohibition Matrix
 
-| Larangan | Gantinya |
+| Prohibited | Permitted Replacement |
 |---|---|
-| `Math.random()` di render loop | sinus frekuensi tinggi: `Math.sin(t*137.2)` |
-| `Date.now()` / `performance.now()` | `tl.time()` diteruskan sebagai parameter |
-| `setInterval` untuk teks berjalan/mengetik | tween `{i:0→n}` + `onUpdate` slice |
-| akumulasi `pos += v*dt` | posisi = fungsi(seed, state.flow) |
-| `Math.random()` saat SETUP boleh | seed dibuat sekali saat load, bukan per frame |
+| `Math.random()` in render loops | High-frequency sine wave: `Math.sin(t * 137.2)` |
+| `Date.now()` or `performance.now()` | `tl.time()` passed as a parameter |
+| `setInterval` for typing/counter text | GSAP tween `{ i: 0 → n }` + `onUpdate` string slice |
+| Frame accumulation: `pos += v * dt` | Pure function: `position = f(seed, state.flow)` |
+| `Math.random()` during setup only | Permitted: generate fixed seeds once at initialization, never per frame |
 
-## Dev server wajib no-cache
+## Dev Server Must Be Zero-Cache
 
-`python -m http.server` membiarkan browser menahan module JS lama lewat
-heuristic caching — edit "tidak ngefek", dan kamu akan mengejar hantu.
-Selalu pakai server yang mengirim `Cache-Control: no-store`
-(`scripts/serve.py`). ES module tidak jalan lewat `file://`, jadi server
-memang wajib.
+Standard servers like `python -m http.server` allow browsers to aggressively cache local ES modules via heuristic caching. Edits appear ignored, leading to phantom debugging.
+Always use a development server that explicitly sends `Cache-Control: no-store` headers (`scripts/serve.py`). Because ES modules cannot load over `file://` due to CORS, a local dev server is required during modular development.
 
-## Verifikasi vs export — dua hal berbeda
+## Verification vs. Export: Two Distinct Operations
 
-- **Verifikasi** (setiap batch perubahan): `scripts/snap.mjs` memotret
-  6–20 detik kunci lewat `OPENER.seek(t)`; hasilnya dilihat, bukan
-  disimpan. Tanpa Node: `?debug=1` + screenshot manual.
-- **Export** (hanya bila user minta MP4): render semua frame. Jangan
-  tertukar — merender penuh untuk "ngetes" membuang ribuan gambar dan tidak
-  memberi penilaian apa pun.
+- **Visual Verification** (run after every batch of changes): `scripts/snap.mjs` captures 6–20 key seconds via `OPENER.seek(t)`. The resulting contact sheet is inspected by eye to verify layout and timing. If Node is absent, use `?debug=1` and capture screenshots manually.
+- **Export** (executed only when the user requests an MP4 video file): Renders every individual frame at 60 fps. Never run a full export just to check your work; full exports take significant time and produce thousands of temporary files.
 
-## Export ke video
+## Video Export Pipeline
 
-Jangan merekam layar untuk hasil final (frame drop). Karena semuanya
-deterministik: set `tl.time(frame/fps)` → tunggu 2× rAF (satu untuk GSAP
-menulis style, satu untuk render loop menggambar) → screenshot → ulangi.
-`scripts/export-frames.mjs` melakukannya via puppeteer; gabungkan dengan:
+Never rely on screen recording for final deliverables (screen capture introduces dropped frames and stutter). Because the entire animation is deterministic:
+1. Seek timeline: `tl.time(frame / fps)`.
+2. Wait two `requestAnimationFrame` ticks (first for GSAP to apply DOM styles, second for the WebGL canvas to draw).
+3. Capture screenshot.
+4. Repeat for all frames.
 
-```
+`scripts/export-frames.mjs` automates this via Puppeteer. Stitch into high-quality MP4 using FFmpeg:
+
+```bash
 ffmpeg -framerate 60 -i frames/f%05d.png -c:v libx264 -pix_fmt yuv420p -crf 16 out.mp4
 ```
 
-Ekspos `window.OPENER = { tl, DURATION }` supaya skrip export (dan debugging
-konsol) bisa mengendalikan timeline.
+Always expose `window.OPENER = { tl, DURATION }` globally so export scripts and developer consoles can control playback directly.
 
-## Panel kontrol developer — tersembunyi
+## Developer Controls — Hidden by Default
 
-Jangan tampilkan player di deliverable. Default: autoplay saat dibuka, loop
-saat selesai, R ulang, Space jeda. Panel (play/pause, slider scrub, jam
-`t.toFixed(2)`) hanya muncul dengan `?debug=1`; `?clean=1` = tanpa panel dan
-tanpa autoplay untuk skrip export. Scrub tetap alat review utama user —
-mereka berpikir dalam "detik ke-X" — tapi lewat URL debug, bukan di hasil.
+Do not show player UI in the final deliverable.
+- Default: Autoplay on load, seamless loop on finish, `R` to restart, `Space` to pause.
+- `?debug=1`: Displays playback toggles, scrub slider, and precise timestamp clock (`t.toFixed(2)`).
+- `?clean=1`: Disables UI controls and halts autoplay (designed for automated export scripts).
 
-## Verifikasi visual (bukan opsional)
+## Standalone Single-File Deliverable (Zero Server Required)
 
-Setelah tiap batch perubahan: buka di browser, `tl.pause(); tl.time(X)` di
-konsol untuk tiap detik kunci, screenshot, nilai dengan heuristik di
-`anti-ppt.md`. Kode yang jalan ≠ adegan yang benar; hampir semua revisi
-user datang dari MELIHAT, bukan dari error.
+While modular multi-file structures are convenient during development, the final deliverable presented to the user must be a single, standalone `index.html` opened by double-clicking:
 
-
-## Bentuk deliverable: satu berkas, tanpa server
-
-Selama pengembangan boleh multi-file (css/, js/) + server no-cache. Tapi yang
-DISERAHKAN adalah satu `index.html` yang bisa diklik dua kali:
-
-- `<style>` dan `<script type="module">` ditulis inline. Alasannya teknis:
-  Chrome menolak `<script type="module" src="js/app.js">` dari `file://`
-  (origin `null` → CORS), sedangkan module inline boleh meng-`import` dari
-  CDN https tanpa masalah.
-- Import map + GSAP/Three dari CDN tetap dipakai (butuh internet, tidak butuh
-  server). Font Google juga.
-- Aset lokal (ikon, gambar) cukup path relatif — `<img src="icon.png">`
-  aman di `file://`.
-- Hindari `fetch()`/XHR ke berkas lokal — itu diblokir di `file://`.
-- Node/puppeteer hanya untuk render MP4; jangan sampai user mengira opener
-  butuh `node_modules`. Jelaskan itu di README. Tanpa Node: rekam layar
-  (dengan catatan bisa drop frame). Tanpa Python: tidak ada yang hilang —
-  server hanya perlu bila memakai module lokal, dan deliverable satu-berkas
-  tidak memakainya.
-- Skrip render/snap memakai default `pathToFileURL(process.cwd())` supaya
-  bekerja tanpa server; URL http tetap bisa dioper lewat env `URL`.
-
-Proses inline yang aman: baca css & js, ganti tag `<link>`/`<script src>`
-dengan isinya, pastikan JS tidak mengandung `</script>`, lalu hapus folder
-sumbernya supaya tidak ada dua kebenaran.
+- CSS in `<style>` and JS in `<script type="module">` are embedded inline. Chrome blocks external module scripts (`<script type="module" src="...">`) when run over `file://` (null origin CORS error), but permits inline module scripts to import dependencies from HTTPS CDNs.
+- Import maps, GSAP, and Three.js load over HTTPS CDN URLs (requires internet access, but zero local server).
+- Local assets (SVGs, images) use relative paths (`<img src="icon.png">` works reliably on `file://`).
+- Avoid `fetch()` or XHR calls to local files, which are blocked on `file://`.
+- Inform users that Node and Python are strictly development utilities; viewing the deliverable requires only a web browser.

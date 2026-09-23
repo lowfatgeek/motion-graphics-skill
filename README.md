@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="icon.svg" width="112" alt="Bang Motion icon">
+<img src="icon.svg" width="112" alt="Motion Bang Bang icon">
 
-# Bang Motion
+# Motion Bang Bang
 
 **An agent skill that turns your AI coding agent into a motion designer.**<br>
 Openers, promos, product demos, kinetic typography, and explainers — built as a single `index.html` that plays like video, not like slides.
@@ -12,7 +12,7 @@ Openers, promos, product demos, kinetic typography, and explainers — built as 
 [![Agent Skills](https://img.shields.io/badge/format-Agent%20Skills-1c2a4a?style=flat-square)](#install)
 [![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Gemini%20CLI%20%C2%B7%20Cursor-7a5af5?style=flat-square)](#install)
 
-<img src="docs/gallery/hero.jpg" alt="A grid of styles Bang Motion can build: grainy gradient opener, SaaS product tour, flat pop promo with photos, visual journalism explainer, continuous action explainer, cartoon collage explainer" width="100%">
+<img src="docs/gallery/hero.jpg" alt="A grid of styles Motion Bang Bang can build: grainy gradient opener, SaaS product tour, flat pop promo with photos, visual journalism explainer, continuous action explainer, cartoon collage explainer" width="100%">
 
 [What you can make](#what-you-can-make) · [Style gallery](#style-gallery) · [Workflow](#recommended-workflow) · [Example prompts](#example-prompts) · [Install](#install) · [FAQ](#faq)
 
@@ -22,7 +22,7 @@ Openers, promos, product demos, kinetic typography, and explainers — built as 
 
 ## Why
 
-Ask an AI agent for "a video" and you usually get **slides**: one section per idea, a title, a photo, a fade between them. Bang Motion encodes what a working motion designer insists on — one continuous world, a camera that actually moves, a subject that persists, text that lives inside the scene — as **rules an agent can check in its own code**, plus starters that make the right architecture the easy path.
+Ask an AI agent for "a video" and you usually get **slides**: one section per idea, a title, a photo, a fade between them. Motion Bang Bang encodes what a working motion designer insists on — one continuous world, a camera that actually moves, a subject that persists, text that lives inside the scene — as **rules an agent can check in its own code**, plus starters that make the right architecture the easy path.
 
 It also stops every project from looking the same. The look is **derived from your brand** through a required style brief, the structure is **chosen from a menu of concepts**, and nothing is inherited from the starter or copied from a reference.
 
@@ -190,7 +190,7 @@ A cartoon explainer on why volcanoes erupt, for kids, 9:16, I will send a voice-
 
 ## Install
 
-Bang Motion follows the open **Agent Skills** layout: a folder with `SKILL.md` (frontmatter + instructions), `references/`, `assets/`, `scripts/`. It also ships as a Claude Code **plugin**.
+Motion Bang Bang follows the open **Agent Skills** layout: a folder with `SKILL.md` (frontmatter + instructions), `references/`, `assets/`, `scripts/`. It also ships as a Claude Code **plugin**.
 
 ### As a plugin (Claude Code)
 
