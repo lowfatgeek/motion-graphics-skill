@@ -225,9 +225,11 @@ The skill triggers on requests like "make an opener…", "promo video…", "expl
 | To… | You need |
 |---|---|
 | **Watch** the result | a browser + internet (GSAP and fonts load from a CDN). Nothing else. |
+| Generate Voiceover (TTS) | ElevenLabs API key (`scripts/elevenlabs_audio.py tts`) — optional |
+| Transcribe & Caption Avatars (STT) | ElevenLabs API key (`scripts/elevenlabs_audio.py stt`) — optional |
 | Verify frames automatically | Node + puppeteer (`scripts/snap.mjs`) — optional; `?debug=1` works by hand |
 | Export MP4 | Node + puppeteer + ffmpeg (`scripts/export-frames.mjs`) — optional |
-| Sync to voice-over | ffmpeg, **or** nothing: `scripts/vo-pauses.html` detects pauses in the browser |
+| Sync to voice-over | ElevenLabs timestamps, ffmpeg, **or** browser pause detector (`scripts/vo-pauses.html`) |
 | Use video clips | MP4 (H.264) or WebM files in `assets/` — optional |
 | Generate images | any image MCP the agent can call — optional |
 | Build in After Effects | After Effects + the Higgsfield MCP bridge — optional |
@@ -248,6 +250,40 @@ A deliverable never needs `npm install` to be watched.
 
 Full detail lives in `SKILL.md` and `references/`.
 
+## ElevenLabs Audio Integration (TTS & STT)
+
+Motion Bang Bang includes zero-dependency CLI tooling (`scripts/elevenlabs_audio.py`) for automated voiceovers and video transcription powered by **ElevenLabs**.
+
+### 1. Text-to-Speech (TTS) with Word & Sentence Timestamps
+Convert voiceover scripts into studio audio and extract word-level and sentence-level timestamps for exact GSAP sync:
+```bash
+# Set your API key
+export ELEVENLABS_API_KEY="sk_..."   # or $env:ELEVENLABS_API_KEY in PowerShell
+
+# Generate voiceover audio, timestamps, and GSAP cue points
+python scripts/elevenlabs_audio.py tts \
+  --text "Motion Bang Bang creates cinematic web animations." \
+  --voice george \
+  --output assets/vo.mp3 \
+  --timestamps assets/vo-timestamps.json \
+  --cues assets/vo-cues.js
+```
+The resulting `assets/vo-timestamps.json` gives you duration, WPM, sentence boundaries, and natural pauses ($\ge 0.35$s) ideal for scene cuts.
+
+### 2. Speech-to-Text (STT) for Talking-Head Avatars
+Transcribe talking-head videos (e.g., from HeyGen, Synthesia, D-ID, or webcam recordings) or audio tracks using ElevenLabs Scribe:
+```bash
+python scripts/elevenlabs_audio.py stt \
+  --file assets/avatar.mp4 \
+  --output assets/transcript.json \
+  --srt assets/captions.srt \
+  --vtt assets/captions.vtt \
+  --cues assets/captions-cues.js
+```
+Generate word-by-word kinetic typography captions that pop dynamically as the avatar speaks, or export standard `.srt` / `.vtt` subtitles.
+
+For detailed architecture, voice aliases, and GSAP sync patterns, see [`references/elevenlabs-audio.md`](references/elevenlabs-audio.md).
+
 ## Repository layout
 
 ```
@@ -261,11 +297,13 @@ references/
   kartun-panggung.md             cartoon stage explainers
   architecture.md                stage, camera rig, determinism, export
   ae-bridge-higgsfield.md        building inside After Effects via the MCP bridge
+  elevenlabs-audio.md            TTS voiceover with timestamps & STT avatar captions
   roadmap.md                     where the skill is heading
 assets/
   starter-opener.html            opener / promo architecture (GSAP + Three.js)
   starter-explainer*.html        one starter per explainer style
 scripts/
+  elevenlabs_audio.py            ElevenLabs TTS & STT audio CLI engine (zero dependencies)
   snap.mjs                       verify: capture key seconds
   export-frames.mjs              export: frame-by-frame PNG → MP4
   vo-pauses.html                 voice-over pause detection, no ffmpeg needed
@@ -280,6 +318,18 @@ docs/gallery/                    README preview images
 <summary><b>Is the output a video file?</b></summary>
 
 The deliverable is an `index.html` that plays like a video: autoplay, loop, no player chrome. When you need a file, `scripts/export-frames.mjs` renders it frame by frame to MP4.
+</details>
+
+<details>
+<summary><b>Can I edit talking-head avatar videos and add captions?</b></summary>
+
+Yes! Place your talking-head video in `assets/avatar.mp4`, run `python scripts/elevenlabs_audio.py stt --file assets/avatar.mp4` to extract word timestamps, and use the GSAP synchronization pattern in `references/elevenlabs-audio.md` to overlay kinetic pop typography, animated badges, and graphic lower-thirds locked to the speaker's words.
+</details>
+
+<details>
+<summary><b>If I only have a script, how is the voiceover created?</b></summary>
+
+Provide your script in markdown or plain text, then run `python scripts/elevenlabs_audio.py tts --file vo-script.md --voice george --output assets/vo.mp3`. It generates the audio voiceover along with `assets/vo-timestamps.json` containing exact start and end times for every word and sentence, allowing the GSAP timeline to re-time itself automatically.
 </details>
 
 <details>

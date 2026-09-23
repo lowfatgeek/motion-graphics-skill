@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.20.0 — 2026-09-23
+
+**ElevenLabs Audio Integration (TTS & STT)**
+- Built-in zero-dependency CLI tool (`scripts/elevenlabs_audio.py`) for Text-to-Speech (TTS) and Speech-to-Text (STT) powered by ElevenLabs.
+- **TTS with Word & Sentence Timestamps**: Converts voiceover scripts into studio-grade voiceover (`assets/vo.mp3`) with exact character, word, and sentence alignments (`assets/vo-timestamps.json`), plus natural pause detection for GSAP scene cuts.
+- **STT for Talking-Head Avatars & Captions**: Transcribes pre-recorded video/audio using ElevenLabs Scribe (`scribe_v1`) into word-level timestamps (`assets/transcript.json`), SubRip subtitles (`.srt`), and WebVTT (`.vtt`).
+- **GSAP Kinetic Typography Helpers**: Generates cue points (`assets/vo-cues.js`, `assets/captions-cues.js`) to animate word pops, color highlights, and kinetic typography in sync with spoken dialogue.
+- Added comprehensive documentation and code recipes in `references/elevenlabs-audio.md`.
+
 ## 1.19.0 — 2026-09-15
 
 **Ukuran shot — kamera ke elemen**

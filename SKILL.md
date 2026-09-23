@@ -1,6 +1,6 @@
 ---
 name: motion-bang-bang
-description: Build cinematic in-browser motion graphics (promo videos, openers, intros, bumpers, kinetic typography, and 16:9 or 9:16 illustrated explainers) using HTML + CSS + GSAP (+ Three.js when needed), producing outputs that move like real video rather than presentation slides. Use this skill whenever the user asks for a "promo video", "opener", "animated intro", "motion graphic", "bumper", "kinetic typography", "cinematic text animation", "explainer", "explainer video" (visual journalism, educational cartoon, collage), or provides promotional/explainer video references and wants a web version — even if they do not explicitly say "motion graphic". Also use when the user complains web animation looks "like a PowerPoint/slideshow" and wants it more cinematic, wants to render web animation into an MP4 video file, or wants cartoon/animated explainers built DIRECTLY in After Effects via the Higgsfield MCP bridge.
+description: Build cinematic in-browser motion graphics (promo videos, openers, intros, bumpers, kinetic typography, and 16:9 or 9:16 illustrated explainers) using HTML + CSS + GSAP (+ Three.js when needed), producing outputs that move like real video rather than presentation slides. Features built-in ElevenLabs Text-to-Speech (TTS with word/sentence timestamps for frame-accurate timeline synchronization) and Speech-to-Text (STT via Scribe for talking-head avatar videos, animated captions, and kinetic typography). Use this skill whenever the user asks for a "promo video", "opener", "animated intro", "motion graphic", "bumper", "kinetic typography", "cinematic text animation", "explainer", "explainer video" (visual journalism, educational cartoon, collage), "talking head video captioning", or provides promotional/explainer video references and wants a web version — even if they do not explicitly say "motion graphic". Also use when the user complains web animation looks "like a PowerPoint/slideshow" and wants it more cinematic, wants to render web animation into an MP4 video file, or wants cartoon/animated explainers built DIRECTLY in After Effects via the Higgsfield MCP bridge.
 license: MIT
 metadata:
   maintainer: lowfatgeek
@@ -9,13 +9,13 @@ metadata:
   original_author_url: https://youtube.com/bangtutorial
   original_project: Bang Motion
   original_homepage: https://github.com/bangtutorial/bang-motion
-  version: "1.19.0"
+  version: "1.20.0"
   updated: "2026-09-23"
 ---
 
 # Motion Bang Bang — Web Motion Graphics That Move Like Video, Not Slides
 
-**v1.19.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
+**v1.20.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
 
 This skill is designed for any AI coding agent (open Agent Skills specification). It defines strict principles and production recipes for motion graphics that behave like real video rather than slide presentations. **Read and enforce these rules before writing any code.**
 
@@ -23,6 +23,7 @@ This skill is designed for any AI coding agent (open Agent Skills specification)
 
 The core deliverable (`index.html`) requires only a modern browser and an internet connection for CDNs (GSAP, web fonts). Python and Node are **strictly optional tooling**:
 - `scripts/serve.py`: Zero-cache local dev server (only needed when using local JS modules).
+- `scripts/elevenlabs_audio.py`: ElevenLabs audio CLI (zero pip dependencies) for Text-to-Speech voiceovers with word/sentence timestamps and Speech-to-Text transcription/subtitles for talking-head videos.
 - Node + Puppeteer: Automated verification snapshots (`scripts/snap.mjs`) and frame-by-frame MP4 export (`scripts/export-frames.mjs`).
 
 If the user has neither Python nor Node:
@@ -31,16 +32,21 @@ If the user has neither Python nor Node:
 3. For MP4 output, suggest screen recording (OBS or browser tab capture) with a disclaimer that screen capture may drop frames, whereas frame-by-frame rendering requires Node.
 4. **NEVER produce a deliverable that requires running `npm install` just to be viewed.**
 
-**FFmpeg is also optional.** Check first with `ffmpeg -version`. If unavailable:
+**FFmpeg and AI Audio tooling:**
+- **Voiceover Generation (TTS)**: When an ElevenLabs API key is present (`ELEVENLABS_API_KEY`), run `python scripts/elevenlabs_audio.py tts --text "..." --output assets/vo.mp3` to instantly generate studio audio, word-level timestamps (`assets/vo-timestamps.json`), and scene pause markers.
+- **Talking-Head Avatar Transcription (STT)**: Run `python scripts/elevenlabs_audio.py stt --file assets/avatar.mp4` to produce word-level transcriptions and `.srt`/`.vtt` subtitles for kinetic typography.
+- **FFmpeg is also optional.** Check first with `ffmpeg -version`. If unavailable:
 
-| Task | With FFmpeg | Without FFmpeg |
+| Task | With ElevenLabs / FFmpeg | Without ElevenLabs / FFmpeg |
 |---|---|---|
-| Voiceover (VO) sync (sentence/paragraph pauses) | `silencedetect` filter | `scripts/vo-pauses.html` — open in browser, load audio file, copy `SEG`/`PARA` markers (runs Web Audio API locally with zero install) |
-| Audio duration and format check | `ffprobe` | `DUR` value from `scripts/vo-pauses.html`; modern browsers play WAV/MP3/M4A/OGG natively |
+| Voiceover (VO) generation & word timestamps | `scripts/elevenlabs_audio.py tts` (word + sentence timestamps) | User records audio manually or uses Web Speech API |
+| Talking-head avatar transcription & captions | `scripts/elevenlabs_audio.py stt` (word timestamps, SRT/VTT) | User supplies pre-written transcript or manual markers |
+| Voiceover pause detection | `scripts/elevenlabs_audio.py tts` or `ffmpeg silencedetect` | `scripts/vo-pauses.html` — open in browser, load audio file, copy markers |
+| Audio duration and format check | `ffprobe` or `elevenlabs_audio.py` | `DUR` value from `scripts/vo-pauses.html`; modern browsers play WAV/MP3/M4A natively |
 | MP4 Export | Stitch PNG sequence from `export-frames.mjs` | No direct MP4 export — suggest 1-command install (`winget install Gyan.FFmpeg` / `brew install ffmpeg`) or screen recording |
 | Reference video study (frame extraction) | `fps=` + `tile=` filters | Ask user for screenshots at key timestamps, or open the video in browser and inspect frames |
 
-Without FFmpeg, the entire explainer workflow remains functional up to VO synchronization; only MP4 rendering requires installation.
+Without FFmpeg or API keys, the entire motion graphics and explainer workflow remains functional; with ElevenLabs, audio voiceover and kinetic captioning become completely automated.
 
 ## Player Rules — No On-Screen Player, Autoplay, Seamless Loop
 
@@ -255,6 +261,7 @@ When After Effects is running, the Higgsfield `ae_*` MCP bridge is connected, an
 | `references/techniques.md` | When implementing animations and visual effects: typography formulas, directional blur filters, shot scaling, background motion menus, and UI mockups. |
 | `references/ae-bridge-higgsfield.md` | When building cartoon explainers directly inside Adobe After Effects via the Higgsfield MCP bridge. |
 | `references/roadmap.md` | Reference for architectural evolution, design rationale, and expanding skill capabilities. |
+| `references/elevenlabs-audio.md` | **Mandatory** for audio & speech: ElevenLabs TTS voiceover generation, word/sentence timestamps, and STT talking-head avatar captions. |
 | `assets/starter-opener.html` | Base code template for openers, promos, bumpers, and kinetic typography. |
 | `assets/starter-explainer.html` | Base template for continuous action vector explainers (flowing world + map views). |
 | `assets/starter-explainer-kartun.html` | Base template for cartoon collage explainers (cream paper texture, cutouts, marker pills). |
@@ -262,6 +269,7 @@ When After Effects is running, the Higgsfield `ae_*` MCP bridge is connected, an
 | `assets/starter-explainer-katalog.html` | Base template for white catalog explainers (clean white grid, photo cutouts, scribbled notes). |
 | `assets/starter-explainer-sketsa.html` | Base template for vintage sketch explainers (sepia parchment, engraving illustrations, classic serifs). |
 | `assets/starter-explainer-panggung.html` | Base template for cartoon stage explainers (multi-stage system, jointed puppet rigs, diegetic labels). |
+| `scripts/elevenlabs_audio.py` | ElevenLabs CLI engine (zero-dependency): generates TTS audio with timestamps, transcribes STT audio/video, exports SRT/VTT. |
 | `scripts/serve.py` | Local zero-cache development server (`Cache-Control: no-store`). |
 | `scripts/snap.mjs` | Automated visual verification tool: captures keyframe snapshots into a contact sheet via Puppeteer. |
 | `scripts/vo-pauses.html` | Browser-based voiceover pause detector for sentence/paragraph marker alignment (zero install). |
