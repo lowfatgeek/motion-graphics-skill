@@ -3,16 +3,19 @@ name: motion-bang-bang
 description: Build cinematic in-browser motion graphics (promo videos, openers, intros, bumpers, kinetic typography, and 16:9 or 9:16 illustrated explainers) using HTML + CSS + GSAP (+ Three.js when needed), producing outputs that move like real video rather than presentation slides. Use this skill whenever the user asks for a "promo video", "opener", "animated intro", "motion graphic", "bumper", "kinetic typography", "cinematic text animation", "explainer", "explainer video" (visual journalism, educational cartoon, collage), or provides promotional/explainer video references and wants a web version — even if they do not explicitly say "motion graphic". Also use when the user complains web animation looks "like a PowerPoint/slideshow" and wants it more cinematic, wants to render web animation into an MP4 video file, or wants cartoon/animated explainers built DIRECTLY in After Effects via the Higgsfield MCP bridge.
 license: MIT
 metadata:
-  author: Bang Tutorial
-  author_url: https://youtube.com/bangtutorial
+  maintainer: lowfatgeek
+  homepage: https://github.com/lowfatgeek/motion-graphics-skill
+  original_author: Bang Tutorial
+  original_author_url: https://youtube.com/bangtutorial
+  original_project: Bang Motion
+  original_homepage: https://github.com/bangtutorial/bang-motion
   version: "1.19.0"
-  updated: "2026-09-14"
-  homepage: https://github.com/bangtutorial/bang-motion
+  updated: "2026-09-23"
 ---
 
 # Motion Bang Bang — Web Motion Graphics That Move Like Video, Not Slides
 
-**v1.19.0 · by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
+**v1.19.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
 
 This skill is designed for any AI coding agent (open Agent Skills specification). It defines strict principles and production recipes for motion graphics that behave like real video rather than slide presentations. **Read and enforce these rules before writing any code.**
 

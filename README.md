@@ -195,24 +195,24 @@ Motion Bang Bang follows the open **Agent Skills** layout: a folder with `SKILL.
 ### As a plugin (Claude Code)
 
 ```
-/plugin marketplace add bangtutorial/bang-motion
+/plugin marketplace add lowfatgeek/motion-graphics-skill
 ```
 ```
-/plugin install bang-motion@bang-motion
+/plugin install motion-bang-bang@motion-bang-bang
 ```
 
-Update later with `/plugin marketplace update bang-motion`.
+Update later with `/plugin marketplace update motion-bang-bang`.
 
 ### Manual (any agent)
 
 ```bash
-git clone https://github.com/bangtutorial/bang-motion
+git clone https://github.com/lowfatgeek/motion-graphics-skill
 ```
 
 | Agent | Where it goes |
 |---|---|
-| Claude Code | `~/.claude/skills/bang-motion` (Windows: `C:\Users\<you>\.claude\skills\bang-motion`) |
-| Codex CLI | your Codex skills folder, or add to `AGENTS.md`: *"For motion graphics / explainers, read and follow `bang-motion/SKILL.md`."* |
+| Claude Code | `~/.claude/skills/motion-bang-bang` (Windows: `C:\Users\<you>\.claude\skills\motion-bang-bang`) |
+| Codex CLI | your Codex skills folder, or add to `AGENTS.md`: *"For motion graphics / explainers, read and follow `motion-bang-bang/SKILL.md`."* |
 | Gemini CLI · Cursor · others | copy into the project and reference `SKILL.md` from `GEMINI.md`, `.cursor/rules`, or the system prompt |
 | Plain chat (no agent) | paste `SKILL.md` + the relevant file in `references/` as instructions; attach a starter from `assets/` |
 
@@ -316,6 +316,11 @@ Yes, for cartoon explainers: with After Effects open and the Higgsfield MCP brid
 
 Issues and pull requests are welcome. When you add a rule, describe which failure it prevents and offer it as a menu option rather than a single "right answer". Bump `version` in `SKILL.md` and the plugin manifests, and add a line to `CHANGELOG.md`.
 
+## Credits & Acknowledgments
+
+**Motion Bang Bang** is an independent project forked and adapted from [**Bang Motion**](https://github.com/bangtutorial/bang-motion), originally conceived and developed by [**Bang Tutorial**](https://youtube.com/bangtutorial).
+Immense gratitude and credit go to Bang Tutorial for establishing the foundational motion design architecture, the Anti-PPT methodology, starter templates, and creative directions that power this skill.
+
 ## License
 
-[MIT](LICENSE) © 2026 [Bang Tutorial](https://youtube.com/bangtutorial)
+[MIT](LICENSE) © 2026 lowfatgeek · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) © 2026 [Bang Tutorial](https://youtube.com/bangtutorial)
