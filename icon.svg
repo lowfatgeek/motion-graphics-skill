@@ -1,44 +1,143 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#151A33"/>
-      <stop offset="1" stop-color="#0A0D1C"/>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#14182E"/>
+      <stop offset="45%" stop-color="#0E1122"/>
+      <stop offset="100%" stop-color="#070811"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0.72" cy="0.28" r="0.6">
-      <stop offset="0" stop-color="#FF6A3D" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#FF6A3D" stop-opacity="0"/>
+
+    <!-- Ambient Mesh Glows -->
+    <radialGradient id="meshGlowPrimary" cx="72%" cy="26%" r="55%">
+      <stop offset="0%" stop-color="#FF5E3A" stop-opacity="0.45"/>
+      <stop offset="50%" stop-color="#FF2A6D" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#FF2A6D" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="path" x1="0" y1="1" x2="1" y2="0">
-      <stop offset="0" stop-color="#FF4D3D"/>
-      <stop offset="0.6" stop-color="#FF8A3D"/>
-      <stop offset="1" stop-color="#FFC24D"/>
+    <radialGradient id="meshGlowCyan" cx="28%" cy="75%" r="50%">
+      <stop offset="0%" stop-color="#05D9E8" stop-opacity="0.30"/>
+      <stop offset="60%" stop-color="#010A15" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="bangBurstGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF0A0" stop-opacity="0.9"/>
+      <stop offset="35%" stop-color="#FF5E3A" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#FF2A6D" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Velocity Ribbons Gradients -->
+    <linearGradient id="heroRibbon" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FF1361"/>
+      <stop offset="35%" stop-color="#FF4E36"/>
+      <stop offset="70%" stop-color="#FF9900"/>
+      <stop offset="100%" stop-color="#FFD600"/>
     </linearGradient>
-    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="14"/>
+
+    <linearGradient id="secondaryRibbon" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0052D4"/>
+      <stop offset="50%" stop-color="#4364F7"/>
+      <stop offset="100%" stop-color="#6FB1FC"/>
+    </linearGradient>
+
+    <!-- Glow & Soft Filters -->
+    <filter id="bloomFast" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="bloomHeavy" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+
+    <filter id="streakGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5"/>
     </filter>
   </defs>
 
-  <!-- panggung -->
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <!-- Base Squircle Canvas -->
+  <rect width="512" height="512" rx="116" fill="url(#bgGrad)"/>
+  <rect width="512" height="512" rx="116" fill="url(#meshGlowPrimary)"/>
+  <rect width="512" height="512" rx="116" fill="url(#meshGlowCyan)"/>
 
-  <!-- jejak gerak: blur di belakang jalur -->
-  <path d="M104 372 C 190 372, 188 152, 292 152 S 372 244, 408 150"
-        fill="none" stroke="#FF6A3D" stroke-width="42" stroke-linecap="round" opacity="0.45" filter="url(#soft)"/>
-  <!-- jalur gerak -->
-  <path d="M104 372 C 190 372, 188 152, 292 152 S 372 244, 408 150"
-        fill="none" stroke="url(#path)" stroke-width="30" stroke-linecap="round"/>
+  <!-- Subtle Inset Specular Border -->
+  <rect x="2" y="2" width="508" height="508" rx="114" fill="none" stroke="rgba(255, 255, 255, 0.12)" stroke-width="2.5"/>
 
-  <!-- keyframe berlian: dua sudah lewat -->
-  <g transform="translate(104 372) rotate(45)">
-    <rect x="-24" y="-24" width="48" height="48" rx="8" fill="#0A0D1C" stroke="#FFFFFF" stroke-width="10"/>
+  <!-- Easing Curves / Graph Editor Reference Guides (Subtle) -->
+  <g opacity="0.12" stroke="#FFFFFF" stroke-width="1.5" stroke-dasharray="4 6" fill="none">
+    <path d="M 96 390 L 96 120"/>
+    <path d="M 96 390 L 416 390"/>
+    <path d="M 96 150 L 416 150"/>
+    <circle cx="216" cy="270" r="3" fill="#FFF"/>
+    <circle cx="408" cy="142" r="3" fill="#FFF"/>
   </g>
-  <g transform="translate(292 152) rotate(45)">
-    <rect x="-24" y="-24" width="48" height="48" rx="8" fill="#0A0D1C" stroke="#FFFFFF" stroke-width="10"/>
+
+  <!-- Secondary Motion Trail (Cyan/Cobalt Echo) -->
+  <path d="M 108 402 C 170 402, 172 292, 226 280 C 274 270, 318 334, 384 172"
+        fill="none" stroke="url(#secondaryRibbon)" stroke-width="14" stroke-linecap="round" opacity="0.45" filter="url(#bloomFast)"/>
+
+  <!-- Hero Motion Curve Glow Shadow (Volumetric Underglow) -->
+  <path d="M 104 386 C 182 386, 176 250, 238 250 C 300 250, 334 290, 408 142"
+        fill="none" stroke="#FF4E36" stroke-width="44" stroke-linecap="round" opacity="0.32" filter="url(#bloomHeavy)"/>
+
+  <!-- Hero Primary Velocity Curve -->
+  <path d="M 104 386 C 182 386, 176 250, 238 250 C 300 250, 334 290, 408 142"
+        fill="none" stroke="url(#heroRibbon)" stroke-width="26" stroke-linecap="round"/>
+
+  <!-- Velocity Core Highlight Streak -->
+  <path d="M 140 376 C 190 366, 196 256, 240 250 C 286 244, 344 260, 396 154"
+        fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- Kinetic Motion Particles & Speed Accents -->
+  <g fill="#FFD600" opacity="0.8">
+    <circle cx="160" cy="358" r="3.5"/>
+    <circle cx="188" cy="310" r="4.5"/>
+    <circle cx="282" cy="268" r="4"/>
+    <circle cx="340" cy="242" r="5"/>
+    <circle cx="370" cy="195" r="3.5"/>
   </g>
-  <!-- keyframe aktif: penuh, menyala -->
-  <g transform="translate(408 150) rotate(45)">
-    <rect x="-40" y="-40" width="80" height="80" rx="12" fill="#FFC24D" opacity="0.35" filter="url(#soft)"/>
-    <rect x="-30" y="-30" width="60" height="60" rx="10" fill="#FFFFFF"/>
+
+  <!-- Keyframe 0: Origin Diamond (At Start) -->
+  <g transform="translate(104 386) rotate(45)">
+    <rect x="-20" y="-20" width="40" height="40" rx="8" fill="#0B0E1E" stroke="#7A889B" stroke-width="6"/>
+    <circle cx="0" cy="0" r="4" fill="#7A889B"/>
   </g>
+
+  <!-- BANG 1: First Impact Burst (Mid-Curve Climax Beat) -->
+  <!-- Outer Shockwave Ring -->
+  <circle cx="238" cy="250" r="38" fill="none" stroke="#FF5E3A" stroke-width="2" opacity="0.4" stroke-dasharray="6 4"/>
+  <!-- Ambient Flare -->
+  <circle cx="238" cy="250" r="36" fill="url(#bangBurstGlow)" opacity="0.7" filter="url(#streakGlow)"/>
+  <!-- Diamond Shell -->
+  <g transform="translate(238 250) rotate(45)">
+    <rect x="-24" y="-24" width="48" height="48" rx="10" fill="#FF2A6D" opacity="0.8"/>
+    <rect x="-18" y="-18" width="36" height="36" rx="7" fill="#FFAE00"/>
+    <rect x="-10" y="-10" width="20" height="20" rx="4" fill="#FFFFFF"/>
+  </g>
+  <!-- Bang 1 Kinetic Sparkle Cross -->
+  <path d="M 238 214 L 238 286 M 202 250 L 274 250" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- BANG 2: Second Explosive Impact Burst (Apex Climax Beat) -->
+  <!-- Anamorphic Lens Flare Line (Horizontal Streak) -->
+  <ellipse cx="408" cy="142" rx="90" ry="4" fill="#FFF275" opacity="0.75" filter="url(#streakGlow)"/>
+  <ellipse cx="408" cy="142" rx="120" ry="2" fill="#FFFFFF" opacity="0.9"/>
+  <!-- Concentric Energy Shockwave -->
+  <circle cx="408" cy="142" r="54" fill="none" stroke="#FFD600" stroke-width="2.5" opacity="0.5" stroke-dasharray="8 6"/>
+  <!-- Heavy Radiant Core Flare -->
+  <circle cx="408" cy="142" r="62" fill="url(#bangBurstGlow)" opacity="0.85" filter="url(#bloomHeavy)"/>
+  <!-- Climax Star / Diamond Hierarchy -->
+  <g transform="translate(408 142) rotate(45)">
+    <!-- Outer Pulsing Diamond -->
+    <rect x="-36" y="-36" width="72" height="72" rx="14" fill="#FF5E3A" opacity="0.6" filter="url(#bloomFast)"/>
+    <!-- Middle Saturated Diamond -->
+    <rect x="-26" y="-26" width="52" height="52" rx="10" fill="#FFC700"/>
+    <!-- Intense White Core -->
+    <rect x="-16" y="-16" width="32" height="32" rx="6" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Bang 2 4-Point Kinetic Star Flares -->
+  <path d="M 408 84 Q 408 142 350 142 Q 408 142 408 200 Q 408 142 466 142 Q 408 142 408 84 Z"
+        fill="#FFFFFF" filter="url(#bloomFast)" opacity="0.95"/>
+  <circle cx="408" cy="142" r="7" fill="#FFFFFF"/>
+
 </svg>
