@@ -37,7 +37,7 @@ Users often ask: "Make an explainer about X." Left unguided, models invent style
 |---|---|---|
 | Aspect Ratio | 16:9 (YouTube / Desktop) · 9:16 (Shorts / Reels / TikTok) · 1:1 | 16:9 (Landscape) |
 | Target Duration | 30 s · 60 s · 90 s | 60 s |
-| Audio Configuration | No audio (text-led) · User will supply VO (build now, retime later) · Music only | No audio, VO script provided in handoff |
+| Audio Configuration | No audio (text-led) · User will supply VO (build now, retime later) · Music only · VO + sound design (effects on every motion) | No audio, VO script provided in handoff |
 
 **What NOT to ask**: Captions (default to none) and player UI (default to autoplay + loop without on-screen controls).
 
@@ -57,6 +57,8 @@ Example closing message:
 > Record or generate this with your voice of choice. Speak at a natural pace with $\sim 1\text{-second}$ pauses between paragraphs (WAV or MP3 format). Share the audio file back here, and I will synchronize the animation timeline to your voiceover track.
 
 Save the identical script into `vo-script.md` in the project root. Always print the script in the chat message as well.
+
+**If the user chose "VO + sound design"**: say in the same handoff that the effects do not have to be sourced — they ship in `assets/sfx/`, are mined from the finished animation, and are mixed onto the rendered MP4 (`references/sound-design.md`). Never ask the user for whooshes, and never embed effect audio in `index.html`.
 
 ## Scaffold from the Correct Style Starter
 

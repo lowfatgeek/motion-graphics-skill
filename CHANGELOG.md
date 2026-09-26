@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.21.0 — 2026-09-26
+
+**Sound design: effects that land on the motion, mixed after the render**
+- **SFX bundle in `assets/sfx/`**: 20 generated takes across 9 motion families (`impact`, `stamp`, `whoosh`, `transition`, `accent`, `paper`, `pen`, `ui`, `ambience`), all 48 kHz / stereo / PCM-16 and peaked to −3 dBFS by pure gain, so intensity stays a mix-time parameter. `library.json` holds the prompts and the per-family mix intent; `manifest.json` and `SOURCES.md` hold measured provenance; `_preview.wav` is one listen for the whole bundle.
+- **`scripts/sfx-cues.mjs`** mines the cue sheet out of the finished timeline instead of a hand-written list: it walks `window.OPENER.tl` in system Chrome, classifies each motion by what actually moved (with `data:"<verb>"` as the author's override), and prunes to a listenable density — printing candidates → kept and the reason every cue was dropped. Validated run: 824 tweens → 422 candidates → 219 cues over 285 s.
+- **`scripts/sfx-mix.mjs`** places that sheet on a rendered MP4: one stem per family, frame-snapped `adelay`, strength-driven gain, ±2.5‰ pitch spread seeded from the frame number, sidechain ducking of the sustained families under the voice, limiter, then muxes with **`-c:v copy`** — the video payload comes out bit-identical, so retuning audio never re-renders a frame.
+- **Verification is numeric**: raw video payload hash, frame count, integrated loudness, true peak, ducking depth measured across a speech window and a gap, and stem event onsets matched against the cue sheet (median offset 0.0000 s).
+- **`scripts/elevenlabs_audio.py`** gained the `sfx` subcommand (`--spec`, `--only`, `--force`, `--preview`, `--renormalize`) plus a sample-accurate trimmer and an equal-power loop crossfader — `--renormalize` re-applies the contract to files on disk with no API call, so contract changes are free.
+- New reference `references/sound-design.md` (bundle contract, mining rules, density targets, ducking, ceiling, checklist, and the traps found the hard way). `SKILL.md` gains workflow step 6b, four checklist items, one trap and the package rows; `references/explainer.md` Step Zero now offers "VO + sound design" as an audio configuration.
+
 ## 1.20.0 — 2026-09-23
 
 **ElevenLabs Audio Integration (TTS & STT)**

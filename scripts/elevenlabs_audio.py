@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 """
-Motion Bang Bang — ElevenLabs Audio Integration (TTS & STT)
+Motion Bang Bang — ElevenLabs Audio Integration (TTS, STT & SFX)
 Zero-dependency Python CLI tool for:
   1. Text-to-Speech (TTS) with word & sentence timestamps for GSAP explainer synchronization.
   2. Speech-to-Text (STT) via ElevenLabs Scribe for transcribing audio/video (talking-head avatars),
      generating word-level kinetic typography cues, .srt and .vtt subtitles.
-  3. Voices listing and inspection.
-  4. GSAP synchronization boilerplate generation.
+  3. Sound Effects (SFX) generation, normalised into a reusable skill bundle (see references/sound-design.md).
+  4. Voices listing and inspection.
+  5. GSAP synchronization boilerplate generation.
 
 Usage:
   python scripts/elevenlabs_audio.py voices
   python scripts/elevenlabs_audio.py tts --text "Hello world" --output assets/vo.mp3
   python scripts/elevenlabs_audio.py tts --file vo-script.md --voice george --output assets/vo.mp3
   python scripts/elevenlabs_audio.py stt --file avatar.mp4 --output assets/transcript.json --srt assets/captions.srt
+  python scripts/elevenlabs_audio.py sfx --text "rubber stamp pressed onto paper, dry, close mic" \
+      --duration 0.6 --output assets/sfx/stamp/stamp-rubber-01.wav
+  python scripts/elevenlabs_audio.py sfx --spec assets/sfx/library.json
   python scripts/elevenlabs_audio.py sync-template
 """
 
@@ -22,6 +26,13 @@ import json
 import base64
 import argparse
 import mimetypes
+import subprocess
+import tempfile
+import shutil
+import array
+import math
+import wave
+import datetime
 from pathlib import Path
 import urllib.request
 import urllib.error
@@ -700,18 +711,614 @@ def cmd_sync_template(args):
 
 
 # ---------------------------------------------------------------------------
+# SFX: Sound Effects generation + bundle normalisation
+#
+# ElevenLabs hands back raw PCM here, so the bundle is built without any
+# lossy intermediate: 48 kHz / 16-bit / stereo WAV with the head trimmed to the
+# first audible sample and a known peak. A sound placed by `adelay` is only
+# frame-accurate if the file itself starts where the motion starts.
+# ---------------------------------------------------------------------------
+
+SFX_SAMPLE_RATE = 48000
+SFX_PEAK_DBFS = -3.0        # 3 dB headroom so 2-3 hits on one frame stay clean
+SFX_ONSET_DB = 45.0         # a sample counts as sound from the contract peak - 45 dB down
+SFX_FLOOR_DB = -60.0        # ...but never lower than this, so a hissy take still gets trimmed
+SFX_MIN_KEEP_S = 0.05       # a one-shot trimmed shorter than this lost its body to the tail gate
+SFX_HEAD_WARN_MS = 15.0     # ~half a frame at 30 fps: beyond this the sound lands late
+SFX_MIN_DURATION = 0.5      # API floor; one-shots are trimmed shorter afterwards
+SFX_MAX_DURATION = 30
+SFX_SOURCE = "elevenlabs /v1/sound-generation (output_format=pcm_48000)"
+SFX_LICENSE_NOTE = (
+    "Generated with an ElevenLabs account. Per ElevenLabs Terms of Use 4(c)(ii) the "
+    "subscriber retains all rights in the Output, and 4(a) permits using Output outside "
+    "the Services. Commercial use requires a PAID plan (Terms of Use 1(c): free tiers are "
+    "non-commercial only). Record the plan tier in this manifest when the bundle is created."
+)
+
+
+def sfx_run(cmd):
+    """Run an external tool with an argv list (no shell, so paths never need quoting)."""
+    return subprocess.run(cmd, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace")
+
+
+def sfx_gate_dbfs(peak_dbfs):
+    """
+    One place decides what counts as silence, so the value used to trim a file can never
+    disagree with the value used to measure it afterwards. That disagreement was a real bug:
+    trimming happened before gain-staging and reporting happened after, so a take that was
+    provably trimmed came back wearing 69 ms of head silence.
+    """
+    return max(peak_dbfs - SFX_ONSET_DB, SFX_FLOOR_DB)
+
+
+def sfx_probe(path, gate_dbfs=None):
+    """
+    Measure a PCM16 WAV with the stdlib rather than ffmpeg: exact duration, the offset of
+    the first audible sample, RMS, peak and clip count. The bundle contract is defined in
+    samples, so the peak must come from the samples, not from a lossy estimate.
+    """
+    with wave.open(str(path), "rb") as w:
+        channels, rate, frames = w.getnchannels(), w.getframerate(), w.getnframes()
+        data = w.readframes(frames)
+    samples = array.array("h")
+    samples.frombytes(data)
+    if not samples:
+        return {"duration_s": 0.0, "head_ms": None, "rms_dbfs": -120.0, "peak_dbfs": -120.0,
+                "clipped": 0, "channels": channels, "sample_rate": rate}
+    gate_dbfs = sfx_gate_dbfs(SFX_PEAK_DBFS) if gate_dbfs is None else gate_dbfs
+    gate = (10 ** (gate_dbfs / 20.0)) * 32768.0
+    peaks = [0] * max(1, channels)
+    clipped = 0
+    head = None
+    for i, v in enumerate(samples):
+        a = -v if v < 0 else v
+        ch = i % channels
+        if a > peaks[ch]:
+            peaks[ch] = a
+        if a >= 32760:
+            clipped += 1
+        if head is None and a > gate:
+            head = i // channels
+    peak = max(peaks)
+    rms = math.sqrt(sum(v * v for v in samples) / float(len(samples)))
+    to_db = lambda v: 20.0 * math.log10(v / 32768.0) if v > 0 else -120.0
+    return {"duration_s": round(frames / float(rate), 4),
+            "head_ms": round(head / float(rate) * 1000.0, 2) if head is not None else None,
+            "rms_dbfs": round(to_db(rms), 2), "peak_dbfs": round(to_db(peak), 2),
+            "clipped": clipped, "channels": channels, "sample_rate": rate}
+
+
+def sfx_cut_silence(src, dst, gate_dbfs, tail=True):
+    """
+    Sample-accurate trim with the stdlib instead of ffmpeg's silenceremove. That filter
+    compares a short window average against its threshold, so a soft attack -- a whoosh
+    ramping up, the first milliseconds of a paper rustle -- makes it stop early and the file
+    keeps tens of milliseconds of latency. `adelay` placement is only honest when the file
+    starts where the sound starts, so the cut is done here instead. Returns the probe.
+    """
+    with wave.open(str(src), "rb") as w:
+        channels, rate, frames = w.getnchannels(), w.getframerate(), w.getnframes()
+        width = w.getsampwidth()
+        data = w.readframes(frames)
+    samples = array.array("h")
+    samples.frombytes(data)
+    gate = (10 ** (gate_dbfs / 20.0)) * 32768.0
+    start = next((i // channels for i, v in enumerate(samples) if (-v if v < 0 else v) > gate), None)
+    if start is None:
+        raise RuntimeError("%s has no sample above %g dBFS -- nothing to keep"
+                           % (Path(src).name, gate_dbfs))
+    end = frames
+    if tail:
+        end = next(i // channels + 1 for i in range(len(samples) - 1, start * channels - 1, -1)
+                   if (-samples[i] if samples[i] < 0 else samples[i]) > gate)
+    with wave.open(str(dst), "wb") as out:
+        out.setnchannels(channels)
+        out.setsampwidth(width)
+        out.setframerate(rate)
+        out.writeframes(samples[start * channels:end * channels].tobytes())
+    return sfx_probe(dst, gate_dbfs)
+
+
+def sfx_wrap_wav(pcm_bytes, path, channels=1):
+    """Wrap headerless PCM s16le into a WAV using the stdlib wave module."""
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(channels)
+        w.setsampwidth(2)
+        w.setframerate(SFX_SAMPLE_RATE)
+        w.writeframes(pcm_bytes)
+    return path
+
+
+def sfx_to_contract(src, dst, af=None):
+    """One ffmpeg pass: sample rate, stereo, PCM 16, optional filter. Returns probe stats."""
+    cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", str(src)]
+    if af:
+        cmd += ["-af", af]
+    cmd += ["-ac", "2", "-ar", str(SFX_SAMPLE_RATE), "-c:a", "pcm_s16le", str(dst)]
+    proc = sfx_run(cmd)
+    if proc.returncode != 0:
+        raise RuntimeError("ffmpeg failed on %s: %s" % (src, (proc.stderr or "")[-900:]))
+    return sfx_probe(dst)
+
+
+def sfx_loop_xfade(src, dst, crossfade_ms=200.0):
+    """
+    Make a take actually loopable. The model's own loop flag does not guarantee it: what
+    comes back is often a swell that ends several dB above where it starts, and a bed that
+    steps in level every 6 s reads as a pulse. So the tail is moved to the front and
+    crossfaded into the head, which is the DAW trick for turning any texture into a seam-free
+    loop -- the loop point then joins two samples that were adjacent in the original file, so
+    there is no join to hear. Costs one pass of arithmetic, no API call.
+    Returns the probe of the (slightly shorter) loop.
+    """
+    with wave.open(str(src), "rb") as w:
+        channels, rate, frames, width = w.getnchannels(), w.getframerate(), w.getnframes(), w.getsampwidth()
+        data = w.readframes(frames)
+    samples = array.array("h")
+    samples.frombytes(data)
+    n = int(rate * crossfade_ms / 1000.0)
+    if channels * n * 2 >= len(samples) or n < 1:
+        shutil.copyfile(str(src), str(dst))
+        return sfx_probe(dst)
+    head = samples[:channels * n]              # what follows the loop point
+    tail = samples[len(samples) - channels * n:]
+    body = samples[channels * n:len(samples) - channels * n]
+    blended = array.array("h")
+    for i in range(channels * n):
+        t = (i // channels) / float(max(1, n - 1))
+        out_g, in_g = math.sqrt(1.0 - t), math.sqrt(t)   # equal-power, uncorrelated noise sums flat
+        v = tail[i] * out_g + head[i] * in_g
+        blended.append(max(-32768, min(32767, int(v))))
+    with wave.open(str(dst), "wb") as out:
+        out.setnchannels(channels)
+        out.setsampwidth(width)
+        out.setframerate(rate)
+        out.writeframes((blended + body).tobytes())
+    return sfx_probe(dst)
+
+
+def sfx_normalize(src, dst, tight=True, peak_dbfs=SFX_PEAK_DBFS, loop=False):
+    """
+    Bring one generated take to the bundle contract: 48 kHz / stereo / PCM 16-bit, gain-staged
+    to a known peak by PURE GAIN (no limiting, so the dynamics of the take survive), then
+    silence-trimmed front and back for one-shots so the file starts on its first audible
+    sample. Gain comes first and trimming second because that is what makes the two agree:
+    both then live on the same dBFS scale, and every bundle file lands at the same peak on
+    purpose -- intensity is a mix-time parameter, not a property of the asset.
+    A loop instead gets the crossfade treatment and keeps its length.
+    Raises RuntimeError instead of exiting, so a batch build can keep going.
+    """
+    work = Path(tempfile.mkdtemp(prefix="mbb_sfx_"))
+    try:
+        base = work / "base.wav"
+        stats = sfx_to_contract(src, base)
+        if stats["peak_dbfs"] < -60:
+            raise RuntimeError("take came back silent")
+        gate = sfx_gate_dbfs(peak_dbfs)
+        shaped = base
+        if loop:
+            shaped = work / "loop.wav"
+            head_db, tail_db = sfx_loop_seam(base)
+            if abs(tail_db - head_db) > 3.0:
+                sfx_loop_xfade(base, shaped)
+            else:
+                # Already seamless -- crossfading twice would shorten the bed and blend blend.
+                shutil.copyfile(str(base), str(shaped))
+        staged = work / "gain.wav"
+        stats = sfx_probe(shaped)
+        delta = peak_dbfs - stats["peak_dbfs"]
+        sfx_to_contract(shaped, staged, ("volume=%.2fdB" % delta) if abs(delta) > 0.1 else None)
+        stage, stats = staged, None
+        if tight:
+            stage = work / "trim.wav"
+            stats = sfx_cut_silence(staged, stage, gate)
+            if stats["duration_s"] < SFX_MIN_KEEP_S:
+                # The tail gate ate a short transient; keep the onset cut and let the decay run.
+                loose = work / "trim-head-only.wav"
+                alt = sfx_cut_silence(staged, loose, gate, tail=False)
+                if alt["duration_s"] > stats["duration_s"]:
+                    stage, stats = loose, alt
+            if stats["duration_s"] < SFX_MIN_KEEP_S:
+                raise RuntimeError("only %.2fs survived trimming -- the take is mostly silence"
+                                   % stats["duration_s"])
+        shutil.copyfile(str(stage), str(dst))
+        return sfx_probe(dst, gate)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def sfx_quality(path, tight=True, loop=False):
+    """Measure a finished bundle file against the contract; returns stats + warnings."""
+    st = sfx_probe(path, sfx_gate_dbfs(SFX_PEAK_DBFS))
+    warns = []
+    if st["clipped"]:
+        warns.append("%d clipped samples" % st["clipped"])
+    if tight and st["head_ms"] is not None and st["head_ms"] > SFX_HEAD_WARN_MS:
+        warns.append("head silence %s ms -- the sound will land late" % st["head_ms"])
+    if tight and st["duration_s"] < SFX_MIN_KEEP_S:
+        warns.append("only %.2fs survived trimming" % st["duration_s"])
+    out = {"duration_s": st["duration_s"], "head_ms": st["head_ms"], "rms_dbfs": st["rms_dbfs"],
+           "peak_dbfs": st["peak_dbfs"], "clipped": st["clipped"], "warnings": warns}
+    if loop:
+        head_db, tail_db = sfx_loop_seam(path)
+        out["loop_seam_db"] = round(tail_db - head_db, 2)
+        if abs(out["loop_seam_db"]) > 6.0:
+            warns.append("loop seam level jumps %.1f dB" % out["loop_seam_db"])
+    return out
+
+
+def sfx_renormalize(path, tight=True, loop=False, peak_dbfs=SFX_PEAK_DBFS):
+    """
+    Re-apply the contract to a file that already exists -- no API call, so no cost. This is
+    how the bundle gets repaired when the gate or the peak target changes.
+    """
+    work = Path(tempfile.mkdtemp(prefix="mbb_sfx_fix_"))
+    try:
+        tmp = work / "fix.wav"
+        sfx_normalize(path, tmp, tight=tight, peak_dbfs=peak_dbfs, loop=loop)
+        shutil.copyfile(str(tmp), str(path))
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+    return sfx_quality(path, tight=tight, loop=loop)
+
+
+def sfx_repair_one(asset, root, prior=None, peak_dbfs=SFX_PEAK_DBFS):
+    """
+    Fix pass for one bundle entry: re-apply the contract to the file we already own and
+    refresh only the measured fields. The provenance in `prior` (prompt, source, date) is
+    carried over, since nothing new was generated. Returns (record, None) or (None, error).
+    """
+    target = root / asset["file"]
+    if not target.exists():
+        return None, "%s does not exist yet -- run without --renormalize to generate it" % asset["file"]
+    loop = bool(asset.get("loop"))
+    tight = bool(asset.get("tight", True)) and not loop
+    try:
+        stats = sfx_renormalize(target, tight=tight, loop=loop, peak_dbfs=peak_dbfs)
+    except (RuntimeError, OSError) as err:
+        return None, str(err)
+    rec = dict(prior or {})
+    rec.update({
+        "file": asset["file"].replace("\\", "/"),
+        "family": asset.get("family", target.parent.name),
+        "trigger": asset.get("trigger", []),
+        "prompt": asset.get("prompt", rec.get("prompt", "")),
+        "requested_s": asset.get("duration_seconds", rec.get("requested_s")),
+        "loop": loop,
+        "tight": tight,
+        "sample_rate": SFX_SAMPLE_RATE,
+        "channels": 2,
+        "bit_depth": 16,
+        "source": rec.get("source", SFX_SOURCE),
+    })
+    rec.update(stats)
+    return rec, None
+
+
+def sfx_loop_seam(path, window_ms=150.0):
+    """
+    A loop only reads as seamless if the level at its end matches the level at its start.
+    Returns (head_rms_db, tail_rms_db) over a short window on each side. The window is a
+    fifth of a second, not a few milliseconds, because that is roughly how long the ear
+    integrates loudness: a 10 ms window just reports wherever a transient happened to land,
+    which flags an even bed as broken.
+    """
+    with wave.open(str(path), "rb") as w:
+        channels, rate = w.getnchannels(), w.getframerate()
+        frames = w.getnframes()
+        win = max(1, int(rate * window_ms / 1000.0))
+        head = array.array("h"); head.frombytes(w.readframes(win))
+        w.setpos(max(0, frames - win))
+        tail = array.array("h"); tail.frombytes(w.readframes(win))
+    def rms_db(chunk):
+        left = chunk[0::channels] if channels > 1 else chunk
+        if not left:
+            return -120.0
+        val = math.sqrt(sum(v * v for v in left) / float(len(left)))
+        return 20.0 * math.log10(val / 32768.0) if val > 0 else -120.0
+    return rms_db(head), rms_db(tail)
+
+
+def sfx_request(api_key, prompt, duration, prompt_influence, loop):
+    """POST /v1/sound-generation. Returns (pcm_bytes, None) or (None, error_text)."""
+    payload = {"text": prompt, "duration_seconds": float(duration)}
+    if prompt_influence is not None:
+        payload["prompt_influence"] = float(prompt_influence)
+    if loop:
+        payload["loop"] = True
+    url = "%s/sound-generation?output_format=pcm_48000" % API_BASE
+    headers = {"xi-api-key": api_key, "Content-Type": "application/json"}
+    status, response = api_request(url, method="POST",
+                                   data=json.dumps(payload).encode("utf-8"), headers=headers)
+    if status != 200:
+        try:
+            return None, json.dumps(json.loads(response), indent=2)
+        except Exception:
+            return None, str(response)[:2000]
+    return response, None
+
+
+def sfx_contract(peak_dbfs=SFX_PEAK_DBFS):
+    """The contract is a property of this tool, so it is rewritten on every write -- a manifest
+    can then never keep describing a rule the code stopped using."""
+    return {"sample_rate": SFX_SAMPLE_RATE, "channels": 2, "bit_depth": 16,
+            "peak_dbfs": peak_dbfs,
+            "trim_gate_dbfs": "gain-staged first, then trimmed sample-accurately at "
+                              "%g dBFS - %g dB (floor %g dBFS)" % (peak_dbfs, SFX_ONSET_DB, SFX_FLOOR_DB),
+            "loop_crossfade_ms": 200,
+            "placement": "ffmpeg adelay, sample-accurate at 48 kHz"}
+
+
+def sfx_manifest_update(manifest_path, records, extra=None):
+    """Merge records into manifest.json (keyed by relative file path), sorted by family."""
+    manifest_path = Path(manifest_path)
+    doc = {"version": 1, "license": SFX_LICENSE_NOTE, "contract": sfx_contract()}
+    if manifest_path.exists():
+        try:
+            loaded = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                doc.update(loaded)
+        except Exception:
+            pass
+    for key, value in (extra or {}).items():
+        if isinstance(value, dict) and isinstance(doc.get(key), dict):
+            doc[key].update(value)
+        else:
+            doc[key] = value
+    assets = {a["file"]: a for a in doc.get("assets", []) if isinstance(a, dict) and a.get("file")}
+    for rec in records:
+        assets[rec["file"]] = rec
+    doc["contract"] = sfx_contract(doc.get("contract", {}).get("peak_dbfs", SFX_PEAK_DBFS))
+    doc["assets"] = sorted(assets.values(), key=lambda a: (a.get("family", ""), a["file"]))
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
+    return doc
+
+
+def sfx_sources_md(manifest_path):
+    """Write SOURCES.md next to the manifest -- derived, so it can never drift."""
+    doc = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    lines = [
+        "# SFX bundle provenance",
+        "",
+        "Audio contract: %s" % json.dumps(doc.get("contract", {}), ensure_ascii=False),
+        "",
+        "License: %s" % doc.get("license", ""),
+        "",
+        "| file | family | triggers | duration | peak | rms | head | loop | prompt |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
+    for a in doc.get("assets", []):
+        lines.append("| `%s` | %s | %s | %.2f s | %.1f dBFS | %.1f dBFS | %s | %s | %s |" % (
+            a["file"], a.get("family", "-"), ", ".join(a.get("trigger", [])) or "-",
+            a.get("duration_s", 0) or 0, a.get("peak_dbfs", 0) or 0, a.get("rms_dbfs", 0) or 0,
+            "-" if a.get("head_ms") is None else "%.0f ms" % a["head_ms"],
+            "yes" if a.get("loop") else "no",
+            (a.get("prompt", "")[:60] + ("..." if len(a.get("prompt", "")) > 60 else "")).replace("|", "/")))
+    flagged = [a["file"] for a in doc.get("assets", []) if a.get("warnings")]
+    if flagged:
+        lines += ["", "## Takes with open warnings", ""]
+        for a in doc.get("assets", []):
+            if a.get("warnings"):
+                lines.append("- `%s` -- %s" % (a["file"], "; ".join(a["warnings"])))
+    mix = {k: v for k, v in (doc.get("mix") or {}).items() if isinstance(v, dict)}
+    if mix:
+        lines += ["", "## Mix intent per family", "",
+                  "Relative to each file's normalised peak. Every asset peaks at the same place "
+                  "on purpose, so these numbers are the whole difference between a click and an "
+                  "impact.", "",
+                  "| family | gain | max hits/s | duck under speech |", "|---|---|---|---|"]
+        for name in sorted(mix):
+            row = mix[name]
+            lines.append("| %s | %s dB | %s | %s |" % (
+                name, row.get("gain_db", "-"), row.get("max_hits_per_s", "-"),
+                "yes" if row.get("duck_under_speech") else "no"))
+    lines += ["", "Every file was generated with `%s`." % SFX_SOURCE, ""]
+    Path(manifest_path).with_name("SOURCES.md").write_text("\n".join(lines), encoding="utf-8")
+
+
+def sfx_build_preview(root, manifest_path, out_path):
+    """Concatenate the whole bundle with 300 ms gaps so it can be auditioned in one listen."""
+    doc = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+    files = [root / a["file"] for a in doc.get("assets", [])]
+    files = [f for f in files if f.exists()]
+    if not files:
+        return None
+    gap = Path(tempfile.mkdtemp(prefix="mbb_gap_")) / "sil.wav"
+    sfx_run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi",
+             "-i", "anullsrc=r=%d:cl=stereo" % SFX_SAMPLE_RATE, "-t", "0.300", str(gap)])
+    listfile = gap.with_name("list.txt")
+    rows = []
+    for f in files:
+        rows += ["file '%s'" % str(gap).replace("\\", "/"), "file '%s'" % str(f).replace("\\", "/")]
+    listfile.write_text("\n".join(rows), encoding="utf-8")
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    proc = sfx_run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat",
+                    "-safe", "0", "-i", str(listfile), "-c:a", "pcm_s16le", str(out_path)])
+    shutil.rmtree(gap.parent, ignore_errors=True)
+    if proc.returncode != 0:
+        print("[WARN] preview build failed: %s" % (proc.stderr or "")[-500:])
+        return None
+    return out_path
+
+
+def sfx_generate_one(asset, root, api_key, peak_dbfs=SFX_PEAK_DBFS, verbose=True):
+    """Generate + normalise a single spec entry. Returns (record, None) or (None, error)."""
+    dst = root / asset["file"]
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    duration = float(asset.get("duration_seconds", 1.0))
+    if duration < SFX_MIN_DURATION or duration > SFX_MAX_DURATION:
+        return None, "duration_seconds %s outside %s-%s" % (duration, SFX_MIN_DURATION, SFX_MAX_DURATION)
+
+    pcm, err = sfx_request(api_key, asset["prompt"], duration,
+                           asset.get("prompt_influence"), asset.get("loop"))
+    if pcm is None:
+        return None, err
+
+    workdir = Path(tempfile.mkdtemp(prefix="mbb_sfx_raw_"))
+    raw = workdir / "raw.wav"
+    try:
+        # The API returns headerless PCM, so the channel count has to be inferred: reading
+        # stereo as mono doubles the length and mangles the sound, so keep whichever
+        # interpretation reproduces the duration the API was asked for.
+        sfx_wrap_wav(pcm, raw, 1)
+        mono_s = sfx_probe(raw)["duration_s"]
+        sfx_wrap_wav(pcm, raw, 2)
+        stereo_s = sfx_probe(raw)["duration_s"]
+        read_channels = 1 if abs(mono_s - duration) <= abs(stereo_s - duration) else 2
+        sfx_wrap_wav(pcm, raw, read_channels)
+        loop = bool(asset.get("loop"))
+        tight = bool(asset.get("tight", True)) and not loop   # trimming a bed would eat its swell
+        sfx_normalize(raw, dst, tight=tight, peak_dbfs=peak_dbfs, loop=loop)
+    except (RuntimeError, OSError) as err:
+        return None, str(err)
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+
+    rec = {
+        "file": asset["file"].replace("\\", "/"),
+        "family": asset.get("family", dst.parent.name),
+        "trigger": asset.get("trigger", []),
+        "prompt": asset["prompt"],
+        "requested_s": duration,
+        "pcm_channels_read": read_channels,
+        "sample_rate": SFX_SAMPLE_RATE,
+        "channels": 2,
+        "bit_depth": 16,
+        "loop": loop,
+        "tight": tight,
+        "source": SFX_SOURCE,
+        "generated": datetime.date.today().isoformat(),
+    }
+    rec.update(sfx_quality(dst, tight=tight, loop=rec["loop"]))
+    if not tight and abs(rec["duration_s"] - duration) > duration * 0.25:
+        rec["warnings"].append("loops and risers should keep their length: %.2fs vs %.2fs"
+                               % (rec["duration_s"], duration))
+    if verbose:
+        print("[OK] %-36s %5.2fs  peak %5.1f  rms %5.1f  head %5s ms%s" % (
+            rec["file"], rec["duration_s"], rec["peak_dbfs"], rec["rms_dbfs"],
+            rec["head_ms"], "  ! " + "; ".join(rec["warnings"]) if rec["warnings"] else ""))
+    return rec, None
+
+
+def cmd_sfx(args):
+    """Generate sound effects: one prompt, a whole library from a JSON spec, or a repair pass."""
+    peak = float(args.peak_dbfs)
+    # A repair pass re-applies the contract to files we already own, so it must not need a key.
+    api_key = None if args.renormalize else get_api_key(args.api_key)
+
+    if args.spec:
+        spec_path = Path(args.spec)
+        if not spec_path.exists():
+            print("[ERROR] Spec not found: %s" % args.spec)
+            sys.exit(1)
+        spec = json.loads(spec_path.read_text(encoding="utf-8"))
+        root = spec_path.parent / spec.get("root", ".")
+        manifest_path = root / spec.get("manifest", "manifest.json")
+        assets = spec.get("assets", [])
+        wanted = None
+        if args.only:
+            wanted = {f.strip() for f in args.only.split(",") if f.strip()}
+
+        print("\n[SFX] Library build -- %d entries, root %s%s"
+              % (len(assets), root, " (repair pass, no API calls)" if args.renormalize else ""))
+        prior = {}
+        if args.renormalize and manifest_path.exists():
+            try:
+                prior = {a["file"]: a for a in json.loads(
+                    manifest_path.read_text(encoding="utf-8")).get("assets", [])}
+            except Exception:
+                prior = {}
+        done, skipped, failed = [], [], []
+        for asset in assets:
+            if wanted and not (wanted & {asset.get("family"), Path(asset["file"]).parent.name,
+                                         Path(asset["file"]).stem}):
+                continue
+            target = root / asset["file"]
+            if args.renormalize:
+                rec, err = sfx_repair_one(asset, root, prior.get(asset["file"]), peak_dbfs=peak)
+                if err:
+                    failed.append((asset["file"], err))
+                    print("[FAIL] %s -- %s" % (asset["file"], err))
+                else:
+                    done.append(rec)
+                    print("[FIX ] %-36s %5.2fs  peak %5.1f  rms %5.1f  head %5s ms%s" % (
+                        rec["file"], rec["duration_s"], rec["peak_dbfs"], rec["rms_dbfs"],
+                        rec["head_ms"], "  ! " + "; ".join(rec["warnings"]) if rec["warnings"] else ""))
+                continue
+            if target.exists() and not args.force:
+                skipped.append(asset["file"])
+                print("[skip] %-34s exists (use --force to regenerate)" % asset["file"])
+                continue
+            rec, err = sfx_generate_one(asset, root, api_key, peak_dbfs=peak)
+            if err:
+                failed.append((asset["file"], err))
+                print("[FAIL] %s\n%s" % (asset["file"], err))
+            else:
+                done.append(rec)
+
+        if done:
+            sfx_manifest_update(manifest_path, done,
+                                extra={"contract": {"peak_dbfs": peak},
+                                       "mix": spec.get("mix", {})})
+            sfx_sources_md(manifest_path)
+        print("\n" + "=" * 62)
+        print("  SFX LIBRARY: %d %s | %d skipped | %d failed" % (
+            len(done), "repaired" if args.renormalize else "generated", len(skipped), len(failed)))
+        print("=" * 62)
+        for name, err in failed:
+            print("  ! %s -- %s" % (name, str(err).splitlines()[0] if err else "?"))
+        if args.preview:
+            pv = sfx_build_preview(root, manifest_path, root / args.preview)
+            if pv:
+                print("[OK] Audition the whole bundle in one listen: %s" % pv.as_posix())
+        if failed:
+            sys.exit(1)
+        return
+
+    if not args.text:
+        print("[ERROR] Provide --text '...' (single take) or --spec library.json (batch).\n")
+        sys.exit(1)
+    out_path = Path(args.output)
+    root = out_path.parent.parent if len(out_path.parents) > 1 else Path(".")
+    asset = {
+        "file": str(out_path.relative_to(root)).replace("\\", "/"),
+        "prompt": args.text,
+        "duration_seconds": args.duration,
+        "prompt_influence": args.prompt_influence,
+        "loop": args.loop,
+        "tight": not (args.no_trim or args.loop),
+        "family": args.family or out_path.parent.name,
+        "trigger": [t.strip() for t in (args.trigger or "").split(",") if t.strip()],
+    }
+    manifest_path = Path(args.manifest) if args.manifest else root / "manifest.json"
+    print("\n[SFX] Generating one take...")
+    rec, err = sfx_generate_one(asset, root, api_key, peak_dbfs=peak)
+    if err:
+        print("[ERROR] ElevenLabs SFX request failed:\n%s" % err)
+        sys.exit(1)
+    sfx_manifest_update(manifest_path, [rec], extra={"contract": {"peak_dbfs": peak}})
+    sfx_sources_md(manifest_path)
+    print("[OK] Timestamp/provenance recorded in %s\n" % manifest_path)
+
+
+# ---------------------------------------------------------------------------
 # CLI Argument Parser Setup
 # ---------------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Motion Bang Bang -- ElevenLabs TTS & STT Audio Integration",
+        description="Motion Bang Bang -- ElevenLabs TTS, STT & SFX Audio Integration",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""Examples:
   python scripts/elevenlabs_audio.py voices --search george
   python scripts/elevenlabs_audio.py tts --text "Hello from Motion Bang Bang" --voice george --output assets/vo.mp3
   python scripts/elevenlabs_audio.py tts --file vo-script.md --voice rachel --timestamps assets/vo-timestamps.json --cues assets/vo-cues.js
   python scripts/elevenlabs_audio.py stt --file avatar.mp4 --output assets/transcript.json --srt assets/captions.srt
+  python scripts/elevenlabs_audio.py sfx --spec assets/sfx/library.json --preview _preview.wav
+  python scripts/elevenlabs_audio.py sfx --text "rubber stamp pressed onto paper, dry, close mic" --duration 0.6 --family stamp --trigger slam,label --output assets/sfx/stamp/stamp-rubber-02.wav
   python scripts/elevenlabs_audio.py sync-template
 """
     )
@@ -751,6 +1358,34 @@ def main():
     voices_parser.add_argument("--category", help="Filter by category (premade, cloned, generated)")
     voices_parser.add_argument("--json", action="store_true", help="Output raw JSON")
 
+    # Command: sfx
+    sfx_parser = subparsers.add_parser(
+        "sfx",
+        help="Generate Sound Effects and normalise them into the skill's SFX bundle "
+             "(stereo 48 kHz PCM WAV, head-trimmed, peak-normalised by pure gain)")
+    sfx_parser.add_argument("--text", help="Prompt for a single take: name the source, surface and mic perspective")
+    sfx_parser.add_argument("--spec", help="Batch build from a library spec JSON (e.g. assets/sfx/library.json)")
+    sfx_parser.add_argument("--output", default="assets/sfx/ui/ui-click-01.wav",
+                            help="Output path for --text mode, relative to the bundle root")
+    sfx_parser.add_argument("--duration", type=float, default=1.0,
+                            help="Requested seconds, 0.5-30 (default: 1.0). Billing scales with this.")
+    sfx_parser.add_argument("--prompt-influence", type=float, default=None,
+                            help="0.0-1.0: how literally the prompt is followed (omit for model default)")
+    sfx_parser.add_argument("--loop", action="store_true", help="Seamless loop (ambience/beds; implies --no-trim)")
+    sfx_parser.add_argument("--no-trim", action="store_true",
+                            help="Keep leading/trailing silence (risers, loops). Default trims below -40 dBFS")
+    sfx_parser.add_argument("--peak-dbfs", type=float, default=SFX_PEAK_DBFS,
+                            help="Peak-normalise target (default: -3.0 dBFS, leaves headroom for stacked hits)")
+    sfx_parser.add_argument("--family", help="Bundle family folder label, e.g. impact / whoosh / paper")
+    sfx_parser.add_argument("--trigger", help="Comma-separated motion verbs this sound answers, e.g. 'slam,block'")
+    sfx_parser.add_argument("--manifest", help="Manifest path (default: next to the output / spec root)")
+    sfx_parser.add_argument("--only", help="Batch: restrict to families or file names, comma-separated")
+    sfx_parser.add_argument("--force", action="store_true", help="Batch: regenerate files that already exist")
+    sfx_parser.add_argument("--renormalize", action="store_true",
+                            help="Batch: re-apply the contract to existing files (trim gate + peak target) "
+                                 "without calling the API, so this pass costs nothing")
+    sfx_parser.add_argument("--preview", help="Batch: also concatenate the bundle into one audition WAV (file name)")
+
     # Command: sync-template
     subparsers.add_parser("sync-template", help="Print GSAP audio & video sync boilerplate code")
 
@@ -760,6 +1395,8 @@ def main():
         cmd_tts(args)
     elif args.command == "stt":
         cmd_stt(args)
+    elif args.command == "sfx":
+        cmd_sfx(args)
     elif args.command == "voices":
         cmd_voices(args)
     elif args.command == "sync-template":

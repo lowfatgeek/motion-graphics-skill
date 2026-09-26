@@ -7,7 +7,7 @@
 **An agent skill that turns your AI coding agent into a motion designer.**<br>
 Openers, promos, product demos, kinetic typography, and explainers — built as a single `index.html` that plays like video, not like slides.
 
-[![Version](https://img.shields.io/badge/version-1.19.0-2f6fd6?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.21.0-2f6fd6?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3fa34d?style=flat-square)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/format-Agent%20Skills-1c2a4a?style=flat-square)](#install)
 [![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Gemini%20CLI%20%C2%B7%20Cursor-7a5af5?style=flat-square)](#install)
@@ -36,6 +36,7 @@ It also stops every project from looking the same. The look is **derived from yo
 | 📺 **Bumpers, idents, channel intros** | short brand moments that loop | 3–10 s |
 | 🧭 **Explainers** | six explainer styles, optional voice-over sync, 16:9 or 9:16 | 30–120 s |
 | 🎥 **Video layers** | your own or generated clips placed like footage — inside devices, frames, and masks, locked to the timeline | — |
+| 🎧 **Sound design** | voice-over generated to word timestamps, then 20 bundled sound effects cued off the finished animation and mixed onto the MP4 without re-rendering a frame | — |
 | 🎞️ **After Effects builds** | cartoon explainers built directly inside AE through the Higgsfield MCP bridge | — |
 
 Every deliverable is one `index.html`: double-click to play, autoplay + loop, `?debug=1` for a scrub bar, and an optional frame-by-frame export to MP4.
@@ -227,6 +228,7 @@ The skill triggers on requests like "make an opener…", "promo video…", "expl
 | **Watch** the result | a browser + internet (GSAP and fonts load from a CDN). Nothing else. |
 | Generate Voiceover (TTS) | ElevenLabs API key (`scripts/elevenlabs_audio.py tts`) — optional |
 | Transcribe & Caption Avatars (STT) | ElevenLabs API key (`scripts/elevenlabs_audio.py stt`) — optional |
+| Put sound effects on a video | bundled `assets/sfx/` library + system Chrome + ffmpeg (`scripts/sfx-cues.mjs`, `scripts/sfx-mix.mjs`) — nothing installed, no re-render |
 | Verify frames automatically | Node + puppeteer (`scripts/snap.mjs`) — optional; `?debug=1` works by hand |
 | Export MP4 | Node + puppeteer + ffmpeg (`scripts/export-frames.mjs`) — optional |
 | Sync to voice-over | ElevenLabs timestamps, ffmpeg, **or** browser pause detector (`scripts/vo-pauses.html`) |
@@ -244,15 +246,16 @@ A deliverable never needs `npm install` to be watched.
 - **Living typography** — sentence case, emphasis by order, size, or pause; word highlights and punctuation only when they add meaning.
 - **A background that never sits still** — a chosen background motion, and color changes with a visible trigger.
 - **Video as footage layers** — clips follow the timeline clock, so scrubbing and MP4 export stay frame-accurate.
+- **Sound after the picture** — effects are mined from the finished timeline and mixed onto the MP4 with the video stream copied, so retuning audio never re-renders a frame.
 - **A camera that works** — breathing drift, motivated push-throughs, and in UI demos a camera that follows the important clicks.
 - **Structural anti-slide checks** — no fading sections, a persistent subject or world, at most two text levels, varied transitions with real depth.
 - **Readable on phones** — no text under 30 px on a 1080-wide stage.
 
 Full detail lives in `SKILL.md` and `references/`.
 
-## ElevenLabs Audio Integration (TTS & STT)
+## ElevenLabs Audio Integration (TTS, STT & SFX)
 
-Motion Bang Bang includes zero-dependency CLI tooling (`scripts/elevenlabs_audio.py`) for automated voiceovers and video transcription powered by **ElevenLabs**.
+Motion Bang Bang includes zero-dependency CLI tooling (`scripts/elevenlabs_audio.py`) for automated voiceovers and video transcription powered by **ElevenLabs**, plus a bundled sound-effects library that any project can use without generating anything.
 
 ### 1. Text-to-Speech (TTS) with Word & Sentence Timestamps
 Convert voiceover scripts into studio audio and extract word-level and sentence-level timestamps for exact GSAP sync:
@@ -282,6 +285,26 @@ python scripts/elevenlabs_audio.py stt \
 ```
 Generate word-by-word kinetic typography captions that pop dynamically as the avatar speaks, or export standard `.srt` / `.vtt` subtitles.
 
+### 3. Sound Effects — the bundled library
+`assets/sfx/` ships 20 takes across 9 motion families: impacts, camera whooshes, paper, pens, UI clicks, rubber stamps, bell and counter accents, one riser, one room-tone bed. All were generated from the prompts in `assets/sfx/library.json` and normalised to a single contract (48 kHz / stereo / PCM-16, −3 dBFS peak by pure gain, trimmed to a ≤ 15 ms head), so nothing in the library is louder than anything else *before* the mixer decides intensity.
+
+```bash
+# one listen for the whole bundle
+python scripts/elevenlabs_audio.py sfx --spec assets/sfx/library.json --preview _preview.wav
+# extend it: add a block to library.json and re-run — existing files are skipped, so only new rows are billed
+python scripts/elevenlabs_audio.py sfx --spec assets/sfx/library.json
+# re-apply the contract after changing a gate or peak target: no API call, no billing
+python scripts/elevenlabs_audio.py sfx --spec assets/sfx/library.json --renormalize
+```
+
+### 4. Placing effects on a rendered video
+Two scripts, nothing installed, and the video stream is **copied** — the approved picture comes out bit-identical:
+```bash
+node scripts/sfx-cues.mjs --why                                   # window.OPENER.tl → assets/sfx-cues.json
+node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav --stems sfx-stems
+```
+The miner classifies every tween by what actually moved and prunes to a density the ear can follow (a validated 285-second explainer: 824 tweens → 422 candidates → 219 cues). The mixer builds one stem per family, snaps each hit onto the frame grid, ducks the sustained families ~13 dB under the narration, limits, muxes, then prints measured loudness and true peak. Full guide: [`references/sound-design.md`](references/sound-design.md).
+
 For detailed architecture, voice aliases, and GSAP sync patterns, see [`references/elevenlabs-audio.md`](references/elevenlabs-audio.md).
 
 ## Repository layout
@@ -298,12 +321,16 @@ references/
   architecture.md                stage, camera rig, determinism, export
   ae-bridge-higgsfield.md        building inside After Effects via the MCP bridge
   elevenlabs-audio.md            TTS voiceover with timestamps & STT avatar captions
+  sound-design.md                SFX bundle contract, cue mining, ducking, mix verification
   roadmap.md                     where the skill is heading
 assets/
   starter-opener.html            opener / promo architecture (GSAP + Three.js)
   starter-explainer*.html        one starter per explainer style
+  sfx/                           20 sound effects in 9 families + library.json, manifest, SOURCES
 scripts/
   elevenlabs_audio.py            ElevenLabs TTS & STT audio CLI engine (zero dependencies)
+  sfx-cues.mjs                   mine a cue sheet from the rendered GSAP timeline
+  sfx-mix.mjs                    place the cues on a rendered MP4 (stems, ducking, mux, copy video)
   snap.mjs                       verify: capture key seconds
   export-frames.mjs              export: frame-by-frame PNG → MP4
   vo-pauses.html                 voice-over pause detection, no ffmpeg needed
@@ -317,7 +344,13 @@ docs/gallery/                    README preview images
 <details>
 <summary><b>Is the output a video file?</b></summary>
 
-The deliverable is an `index.html` that plays like a video: autoplay, loop, no player chrome. When you need a file, `scripts/export-frames.mjs` renders it frame by frame to MP4.
+The deliverable is an `index.html` that plays like a video: autoplay, loop, no player chrome. When you need a file, `scripts/export-frames.mjs` renders it frame by frame to MP4, and `scripts/sfx-mix.mjs` puts sound effects on the result afterwards without touching a single video frame.
+</details>
+
+<details>
+<summary><b>Where do the whooshes and clicks come from?</b></summary>
+
+From the animation itself, not from a guess. `scripts/sfx-cues.mjs` walks the finished GSAP timeline in Chrome, classifies every motion into a family (camera move → whoosh, object landing → impact, stroke drawing → pen, word appearing → paper), and prunes the list to a density the ear can follow. `scripts/sfx-mix.mjs` then places the bundled takes onto the rendered MP4 frame-exactly, ducks the sustained families under the narration, and **copies** the video stream — so retuning the sound never re-renders the picture. Effects are never placed by hand and never embedded in `index.html`.
 </details>
 
 <details>

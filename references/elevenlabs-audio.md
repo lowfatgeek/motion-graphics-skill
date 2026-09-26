@@ -1,9 +1,10 @@
-# ElevenLabs Audio Integration: Voiceover (TTS) & Captions (STT)
+# ElevenLabs Audio Integration: Voiceover (TTS), Captions (STT) & Sound Effects
 
 Motion Bang Bang features built-in integration with **ElevenLabs** for automated audio production and frame-accurate timeline synchronization:
 
 1. **Text-to-Speech (TTS) with Word Timestamps**: Convert scripts into natural studio-quality voiceover (`assets/vo.mp3`), generating character-, word-, and sentence-level timestamp metadata (`assets/vo-timestamps.json`) to drive GSAP scene cuts, camera movements, and kinetic typography.
 2. **Speech-to-Text (STT) via ElevenLabs Scribe**: Transcribe pre-recorded audio or talking-head avatar videos (`.mp4`, `.mov`, `.mp3`, `.wav`), generating word-level timestamps (`assets/transcript.json`), standard subtitle files (`.srt`, `.vtt`), and GSAP kinetic cue arrays.
+3. **Sound Effects (SFX)**: Generate and maintain the bundled `assets/sfx/` library from prompts (`scripts/elevenlabs_audio.py sfx`). Placing those effects on an animation is a separate, post-render job — see §8 and `references/sound-design.md`.
 
 ---
 
@@ -308,3 +309,38 @@ To turn a raw talking-head avatar video into an engaging viral/social motion gra
    - Dynamic captions: Kinetic pop typography positioned at the lower-middle or chest zone.
    - B-Roll / Graphics: Infographic pills, icons, and diagrams sliding in from screen right or popping overhead when specific trigger words are spoken.
 5. **Verify**: Open `index.html?debug=1`, scrub the timeline, and verify that visual accents pop at the exact millisecond the speaker utters the corresponding word.
+
+---
+
+## 7. Sound Effects (SFX) Bundle
+
+`assets/sfx/` ships 20 generated takes across 9 motion families (`impact`, `stamp`, `whoosh`, `transition`, `accent`, `paper`, `pen`, `ui`, `ambience`). **Use the bundle; do not re-generate it for a project.** The CLI exists to maintain it.
+
+```bash
+# Regenerate/maintain from the spec. Existing files are skipped unless --force,
+# so adding a block to library.json and re-running bills only the new rows.
+python scripts/elevenlabs_audio.py sfx --spec assets/sfx/library.json --preview _preview.wav
+
+# Audit the bundle against the current contract and repair what drifts (no API call,
+# no billing) -- prints duration / peak / rms / head per file plus any warning.
+python scripts/elevenlabs_audio.py sfx --spec assets/sfx/library.json --renormalize
+```
+
+- **`duration_seconds` is what you are billed for, not what you keep.** `"tight": true` one-shots are silence-trimmed afterwards, so request headroom and let the trim decide the length.
+- **Every prompt names source + surface + mic perspective and forbids musical content.** A tonal stinger collides with any music bed added later.
+- **One contract for all files** (48 kHz / stereo / PCM-16, peak −3 dBFS by pure gain, head ≤ 15 ms) so intensity stays a mix-time parameter rather than a property of the recording. Details and rationale: `references/sound-design.md` §1.
+- `manifest.json` records per-file measured provenance (duration, peak, RMS, head, prompt, date); `SOURCES.md` is the human-readable version plus the per-family mix table.
+- **Licensing is the user's decision.** Output belongs to the user and may be used outside the service, but free tiers are non-commercial, and the Sound Effects sublicensing opt-out lives in the ElevenLabs dashboard. Record the plan tier in `manifest.json`; the tooling never touches account settings.
+
+---
+
+## 8. Placing Effects on the Animation
+
+Placing is **not** an ElevenLabs job and **not** an in-page job. Two zero-dependency scripts do it after the MP4 is rendered — the video stream is copied, so no frame is ever re-rendered and the approved picture ships untouched:
+
+```bash
+node scripts/sfx-cues.mjs --why                 # 824 tweens -> 422 candidates -> 219 cues
+node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav --stems sfx-stems
+```
+
+The cue miner walks `window.OPENER.tl` in system Chrome and classifies each motion by what actually moved; the mixer renders one stem per family, snaps every cue onto the frame grid, ducks `whoosh`/`paper`/`pen`/`ui` under the voice with a sidechain, limits the bus, muxes, then prints the measured loudness. Full pipeline, density targets and the verification checklist: `references/sound-design.md`.
