@@ -2,7 +2,7 @@
 
 Audio contract: {"sample_rate": 48000, "channels": 2, "bit_depth": 16, "peak_dbfs": -3.0, "trim_gate_dbfs": "gain-staged first, then trimmed sample-accurately at -3 dBFS - 45 dB (floor -60 dBFS)", "loop_crossfade_ms": 200, "placement": "ffmpeg adelay, sample-accurate at 48 kHz"}
 
-License: Generated with an ElevenLabs account. Per ElevenLabs Terms of Use 4(c)(ii) the subscriber retains all rights in the Output, and 4(a) permits using Output outside the Services. Commercial use requires a PAID plan (Terms of Use 1(c): free tiers are non-commercial only). Record the plan tier in this manifest when the bundle is created.
+License: Generated 2026-09-26 on an ElevenLabs Creator subscription (paid plan), which is what clears commercial use: Terms of Use 1(c) restricts free tiers to non-commercial, while 4(c)(ii) assigns all rights in the Output to the subscriber and 4(a) permits using it outside the Services. The Sound Effects sublicensing setting was left at its default (not opted out), so these takes may be redistributed inside this skill. Confirmed by the account owner.
 
 | file | family | triggers | duration | peak | rms | head | loop | prompt |
 |---|---|---|---|---|---|---|---|---|

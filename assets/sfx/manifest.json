@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "license": "Generated with an ElevenLabs account. Per ElevenLabs Terms of Use 4(c)(ii) the subscriber retains all rights in the Output, and 4(a) permits using Output outside the Services. Commercial use requires a PAID plan (Terms of Use 1(c): free tiers are non-commercial only). Record the plan tier in this manifest when the bundle is created.",
+  "license": "Generated 2026-09-26 on an ElevenLabs Creator subscription (paid plan), which is what clears commercial use: Terms of Use 1(c) restricts free tiers to non-commercial, while 4(c)(ii) assigns all rights in the Output to the subscriber and 4(a) permits using it outside the Services. The Sound Effects sublicensing setting was left at its default (not opted out), so these takes may be redistributed inside this skill. Confirmed by the account owner.",
   "contract": {
     "sample_rate": 48000,
     "channels": 2,
