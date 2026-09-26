@@ -1,0 +1,31 @@
+# This repo ships the skill only: SKILL.md, references/, scripts/, assets/sfx/,
+# docs/, icons. Every video project built with the skill is a sibling folder
+# holding its own script, generated media, stems and rendered MP4s — none of
+# that belongs here. Add a line when a new project appears.
+ethiopia-alliance/
+space-bunny/
+
+# Rendered output and generated audio/video, wherever a project writes them.
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.mp3
+*.m4a
+*.aac
+*.flac
+*.wav
+!assets/sfx/**/*.wav
+
+# Working artifacts from previews and frame dumps.
+stems/
+frames/
+snapshots/
+*.log
+
+# Tooling.
+__pycache__/
+*.py[cod]
+node_modules/
+.DS_Store
+Thumbs.db
