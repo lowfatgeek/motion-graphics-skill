@@ -9,13 +9,13 @@ metadata:
   original_author_url: https://youtube.com/bangtutorial
   original_project: Bang Motion
   original_homepage: https://github.com/bangtutorial/bang-motion
-  version: "1.22.0"
-  updated: "2026-09-26"
+  version: "1.23.0"
+  updated: "2026-09-28"
 ---
 
 # Motion Bang Bang — Web Motion Graphics That Move Like Video, Not Slides
 
-**v1.22.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
+**v1.23.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
 
 This skill is designed for any AI coding agent (open Agent Skills specification). It defines strict principles and production recipes for motion graphics that behave like real video rather than slide presentations. **Read and enforce these rules before writing any code.**
 
@@ -25,6 +25,7 @@ The core deliverable (`index.html`) requires only a modern browser and an intern
 - `scripts/serve.py`: Zero-cache local dev server (only needed when using local JS modules).
 - `scripts/elevenlabs_audio.py`: ElevenLabs audio CLI (zero pip dependencies) for Text-to-Speech voiceovers with word/sentence timestamps, Speech-to-Text transcription/subtitles for talking-head videos, and generating/extending the sound-effects bundle.
 - Node + Puppeteer: Automated verification snapshots (`scripts/snap.mjs`) and frame-by-frame MP4 export (`scripts/export-frames.mjs`).
+- Node + HyperFrames (optional accelerator): Rich developer preview studio (`npx hyperframes preview`) and multi-worker turbo MP4 rendering (`npx hyperframes render --workers 8`).
 - Node (system Chrome + `ffmpeg`, no install): Sound-effect cue mining (`scripts/sfx-cues.mjs`) and the post-render SFX mix (`scripts/sfx-mix.mjs`).
 
 If the user has neither Python nor Node:
@@ -201,11 +202,13 @@ Key Typographic Guidelines (see `references/techniques.md` §1 & §1b):
    - You cannot watch video in real time; you must inspect static frames. Capture 6–20 key frames (scene starts, text entrances, climax transitions) using `scripts/snap.mjs` (Puppeteer running over `file://`, zero server required) or manual inspection via `?debug=1`.
    - Inspect visually: Are elements clipped? Does text overlap? Is text appearing before camera motion finishes? Does it look like a slide deck? Fix issues and re-check.
    - Do NOT perform full frame-by-frame renders during active development.
-6. **Deliver as a Standalone Double-Clickable `index.html`**:
+6. **Deliver as a Standalone Double-Clickable `index.html` (Universal Web Video)**:
    - The final output MUST NOT require a local server or Node environment to view. All CSS and JS must be embedded inline within the file (local `<script type="module" src="...">` files are blocked by CORS on `file://`, whereas inline modules load successfully).
    - CDN libraries (GSAP, Three.js) and Google Fonts load over HTTPS. Local images and icons use relative paths.
    - Deliver with no visible player controls (inform user of `?debug=1` for manual timeline scrubbing).
-   - **Render MP4 ONLY when explicitly requested** (`scripts/export-frames.mjs` $\rightarrow$ FFmpeg compilation).
+   - **Dual-Mode Rendering (User's Choice)**:
+     - **Mode A (Vanilla / Zero-Dependency)**: `node scripts/export-frames.mjs` $\rightarrow$ FFmpeg compilation. No npm install needed.
+     - **Mode B (HyperFrames Studio / Multi-Worker Turbo)**: `npx hyperframes preview` (studio with inspector) and `npx hyperframes render --workers 8 --output final.mp4` (parallel accelerated render). Every starter template already registers `data-composition-id="main"` and `window.__timelines["main"] = tl`.
 6b. **Sound Design (only when a rendered MP4 ships)**:
    - Sound effects are a **post-render** step, never page content: do not add `<audio>` effect tags to `index.html`. The mixer copies the video stream, so the approved picture is untouched and retuning audio costs zero frames.
    - Mine the cues from the finished timeline (`node scripts/sfx-cues.mjs`), read the printed tally and `--why`, then mix (`node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav --stems sfx-stems`). Where captions reveal word by word, add `--word-clicks` so each word gets its own click instead of one click per sentence.
@@ -286,6 +289,7 @@ When After Effects is running, the Higgsfield `ae_*` MCP bridge is connected, an
 | `assets/starter-explainer-katalog.html` | Base template for white catalog explainers (clean white grid, photo cutouts, scribbled notes). |
 | `assets/starter-explainer-sketsa.html` | Base template for vintage sketch explainers (sepia parchment, engraving illustrations, classic serifs). |
 | `assets/starter-explainer-panggung.html` | Base template for cartoon stage explainers (multi-stage system, jointed puppet rigs, diegetic labels). |
+| `assets/hyperframes.config.json` | Pre-configured rendering and quality profile for HyperFrames CLI users. |
 | `scripts/elevenlabs_audio.py` | ElevenLabs CLI engine (zero-dependency): generates TTS audio with timestamps, transcribes STT audio/video, exports SRT/VTT, and generates/audits/repairs the `assets/sfx/` bundle. |
 | `scripts/sfx-cues.mjs` | Mines a sound cue sheet out of the rendered timeline (`window.OPENER.tl`) in system Chrome: classifies each motion into a family, prunes to a listenable density, unrolls staggered captions into one cue per word with `--word-clicks`, prints the tally. |
 | `scripts/sfx-mix.mjs` | Places the cue sheet onto a rendered MP4: per-family stems, frame-snapped delays, sidechain ducking under the voice, limiter, then muxes with the video stream copied. |

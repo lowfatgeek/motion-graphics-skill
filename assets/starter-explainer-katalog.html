@@ -57,7 +57,7 @@ html,body{margin:0;height:100%;background:#0a0a0a;overflow:hidden}
 </head>
 <body>
 <svg id="filters"><defs></defs></svg>
-<div id="stage">
+<div id="stage" data-composition-id="main" data-width="1920" data-height="1080">
   <div id="world">
     <div class="paper"></div>
     <div class="ghost" id="ghost" style="left:520px;top:120px">1972</div>
@@ -155,11 +155,14 @@ breath(14.4,DUR,1.03);
 tl.to({},{duration:.01},DUR);
 
 /* ---------- kontrol: autoplay + loop tanpa player; ?debug=1 panel; ?clean=1 export ---------- */
-const q=new URLSearchParams(location.search),vo=$('#vo'),hasVO=!!vo.getAttribute('src');let audioOn=false;
-function start(){tl.play(0);if(hasVO){vo.currentTime=0;vo.play().then(()=>audioOn=true).catch(()=>{});}}
+const q=new URLSearchParams(location.search),isHF=!!(window.__HYPERFRAMES__||(typeof window.parent!=='undefined'&&window.parent?.__HYPERFRAMES__)||q.has('hf')),vo=$('#vo'),hasVO=!!vo.getAttribute('src');let audioOn=false;
+function start(){if(isHF)return;tl.play(0);if(hasVO){vo.currentTime=0;vo.play().then(()=>audioOn=true).catch(()=>{});}}
 tl.eventCallback('onComplete',()=>start());
+tl.eventCallback('onUpdate',applyCam);
 gsap.ticker.add(()=>{if(!audioOn||tl.paused())return;if(Math.abs(vo.currentTime-tl.time())>.12)vo.currentTime=tl.time();});
 window.OPENER={W,H,DURATION:DUR,tl,ready:false,seek(t){tl.pause(t,false);applyCam();if(gsap.ticker.tick)gsap.ticker.tick();}   /* pause(t,false): callback onUpdate ikut jalan saat scrub/snapshot */,play:start};
+window.__timelines=window.__timelines||{};
+window.__timelines["main"]=tl;
 /* ================= FOOTAGE — layer video yang terikat timeline (seperti footage di After Effects) =================
    Markup : <div class="clipbox"><video class="clip" src="assets/klip.mp4" muted playsinline preload="auto"></video></div>
    Pasang : const k = clip($('#v1'), {at:4, in:1.5, out:6, rate:1, hold:false});
@@ -192,11 +195,11 @@ gsap.ticker.add(function(){ if (CLIPS.length) syncClips(window.OPENER.tl.time(),
 window.OPENER.clipsReady = function(){ return CLIPS.every(function(c){ return c.el.readyState >= 2; }); };
 window.OPENER.seekFrame = function(t){ window.OPENER.seek(t); return seekClips(t); };   // ekspor/snap: tunggu frame klip
 addEventListener('keydown',e=>{if(/^[rR]$/.test(e.key))start();if(e.code==='Space'){e.preventDefault();tl.paused()?tl.play():tl.pause();}});
-if(q.has('debug')){const dbg=$('#dbg');dbg.style.display='flex';const sc=$('#dScrub'),ck=$('#dClock');let drag=false;
+if(q.has('debug')&&!isHF){const dbg=$('#dbg');dbg.style.display='flex';const sc=$('#dScrub'),ck=$('#dClock');let drag=false;
   gsap.ticker.add(()=>{if(!drag)sc.value=String(tl.time()/DUR*1000);ck.textContent=tl.time().toFixed(2)+'s';$('#dPlay').textContent=tl.paused()?'Play':'Pause';});
   sc.addEventListener('pointerdown',()=>{drag=true;tl.pause();});addEventListener('pointerup',()=>drag=false);
   sc.addEventListener('input',()=>{tl.pause();tl.time(sc.value/1000*DUR);});$('#dPlay').onclick=()=>tl.paused()?tl.play():tl.pause();}
-document.fonts.ready.then(()=>{applyCam();window.OPENER.ready=true;if(q.has('clean'))return;
+document.fonts.ready.then(()=>{applyCam();window.OPENER.ready=true;if(q.has('clean')||isHF)return;
   if(!hasVO){start();return;}
   vo.play().then(()=>{audioOn=true;vo.currentTime=0;tl.play(0);}).catch(()=>{const go=()=>{removeEventListener('pointerdown',go);removeEventListener('keydown',go);start();};addEventListener('pointerdown',go);addEventListener('keydown',go);});});
 </script>

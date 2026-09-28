@@ -134,7 +134,7 @@ html,body{width:100%;height:100%;background:#000;overflow:hidden;
 
 <svg id="filters"><defs></defs></svg>
 
-<div id="stage">
+<div id="stage" data-composition-id="main" data-width="1920" data-height="1080">
   <div id="world">
     <canvas id="gl"></canvas>
     <div class="bgfx"></div>
@@ -408,13 +408,17 @@ scrub.addEventListener('input',()=>{tl.pause();tl.time(scrub.value/1000*DURATION
 addEventListener('keydown',e=>{ if(e.code==='Space'){e.preventDefault();toggle();}
   if(/^[rR]$/.test(e.key)){tl.pause(0);tl.play();}
   if(/^[hH]$/.test(e.key))$('#ui').classList.toggle('on'); });
-if(Q.has('debug'))$('#ui').classList.add('on');            // default: TANPA player
-tl.eventCallback('onComplete',()=>{tl.play(0);});           // default: loop
+const isHF = !!(window.__HYPERFRAMES__ || (typeof window.parent !== 'undefined' && window.parent?.__HYPERFRAMES__) || Q.has('hf'));
+if(Q.has('debug') && !isHF)$('#ui').classList.add('on');            // default: TANPA player
+tl.eventCallback('onComplete',()=>{if(!isHF)tl.play(0);});          // default: loop
+tl.eventCallback('onUpdate',()=>{render(tl.time());});              // sinkronisasi WebGL saat scrub / seek HyperFrames
 
 /* split diukur SETELAH font termuat — fallback memberi lebar salah */
 /* seek sinkron: paksa GSAP menulis gaya + gambar kanvas sekarang (rAF bisa dithrottle) */
 const seek=t=>{tl.pause();tl.time(t,false);if(gsap.ticker.tick)gsap.ticker.tick();render(t);};
 window.OPENER={tl,DURATION,seek,ready:false};   // dipakai konsol & skrip export
+window.__timelines=window.__timelines||{};      // kontrak HyperFrames
+window.__timelines["main"]=tl;
 /* ================= FOOTAGE — layer video yang terikat timeline (seperti footage di After Effects) =================
    Markup : <div class="clipbox"><video class="clip" src="assets/klip.mp4" muted playsinline preload="auto"></video></div>
    Pasang : const k = clip($('#v1'), {at:4, in:1.5, out:6, rate:1, hold:false});
@@ -446,7 +450,7 @@ function seekClips(t){ return Promise.all(CLIPS.map(function(c){ return new Prom
 gsap.ticker.add(function(){ if (CLIPS.length) syncClips(window.OPENER.tl.time(), !window.OPENER.tl.paused()); });
 window.OPENER.clipsReady = function(){ return CLIPS.every(function(c){ return c.el.readyState >= 2; }); };
 window.OPENER.seekFrame = function(t){ window.OPENER.seek(t); return seekClips(t); };   // ekspor/snap: tunggu frame klip
-document.fonts.ready.then(()=>{window.OPENER.ready=true;if(!Q.has('clean'))tl.play(0);});   // autoplay; ?clean=1 (export) tidak autoplay
+document.fonts.ready.then(()=>{window.OPENER.ready=true;if(!Q.has('clean') && !isHF)tl.play(0);});   // autoplay; ?clean=1 (export) tidak autoplay
 </script>
 </body>
 </html>

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.23.0 — 2026-09-28
+
+**Universal Web Video: Dual-Mode Compatibility (HyperFrames Ready)**
+- **Universal Contract Across All 7 Starter Templates**: Added `data-composition-id="main"`, `data-width="1920"`, and `data-height="1080"` to `#stage`, and registered the master timeline to `window.__timelines["main"] = tl` across all starters (`starter-opener.html`, `starter-explainer*.html`).
+- **Intelligent Environment Sniffing (`isHF`)**: Starters automatically detect whether they are running standalone or inside HyperFrames Studio/Renderer. Standalone preserves autoplay, loop, and `?debug=1` scrubber. Inside HyperFrames, debug HUD and autoplay are cleanly suppressed, allowing HyperFrames transport controls to drive the playhead.
+- **Synchronous Canvas & Camera Redraws**: Added `tl.eventCallback("onUpdate", ...)` in all starters to ensure WebGL scenes, camera rigs, and SVG transformations redraw synchronously on every seek across HyperFrames parallel workers.
+- **HyperFrames Support in `scripts/sfx-cues.mjs`**: The cue miner now accepts either `window.OPENER.tl` or `window.__timelines.main` / `window.__timelines[id]`, allowing seamless timeline mining on any HyperFrames-compatible composition.
+- **`assets/hyperframes.config.json`**: Shipped standard configuration template for running `npx hyperframes preview` and `npx hyperframes render`.
+- **Preserved Decoupled SFX Pipeline**: Both Puppeteer and HyperFrames render engines output standard MP4s that connect directly into `scripts/sfx-cues.mjs` and `scripts/sfx-mix.mjs` for post-render sound design with `-c:v copy` (zero re-renders).
+
 ## 1.22.0 — 2026-09-26
 
 **A click per word: the `camera` family and `--word-clicks`**

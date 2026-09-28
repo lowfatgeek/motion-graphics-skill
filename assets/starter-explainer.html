@@ -43,7 +43,7 @@ html,body{margin:0;height:100%;background:#0a0f1e;overflow:hidden}
 </style>
 </head>
 <body>
-<div id="stage">
+<div id="stage" data-composition-id="main" data-width="1920" data-height="1080">
   <!-- VIEW 1: samping — dunia mengalir, hero diam di frame -->
   <div id="side" class="view"><svg viewBox="0 0 1920 1080"><g id="sideCam">
     <rect x="-300" y="-300" width="2520" height="1680" fill="var(--sky)"/>
@@ -166,11 +166,14 @@ function render(){const t=tl.time(),d=D(t);
 gsap.ticker.add(render);
 
 /* ---------- kontrol: autoplay + loop, tanpa player. ?debug=1 = panel scrub, ?clean=1 = untuk export (tidak autoplay) ---------- */
-const q=new URLSearchParams(location.search),vo=$('#vo'),hasVO=!!vo.getAttribute('src');let audioOn=false;
-function start(){tl.play(0);if(hasVO){vo.currentTime=0;vo.play().then(()=>audioOn=true).catch(()=>{});}}
+const q=new URLSearchParams(location.search),isHF=!!(window.__HYPERFRAMES__||(typeof window.parent!=='undefined'&&window.parent?.__HYPERFRAMES__)||q.has('hf')),vo=$('#vo'),hasVO=!!vo.getAttribute('src');let audioOn=false;
+function start(){if(isHF)return;tl.play(0);if(hasVO){vo.currentTime=0;vo.play().then(()=>audioOn=true).catch(()=>{});}}
 tl.eventCallback('onComplete',()=>start());                 // loop
+tl.eventCallback('onUpdate',()=>{applyCam();render();});
 gsap.ticker.add(()=>{if(!audioOn||tl.paused())return;if(Math.abs(vo.currentTime-tl.time())>.12)vo.currentTime=tl.time();});
 window.OPENER={W,H,DURATION:DUR,tl,ready:false,seek(t){tl.pause(t,false);applyCam();render();},play:start};
+window.__timelines=window.__timelines||{};
+window.__timelines["main"]=tl;
 /* ================= FOOTAGE — layer video yang terikat timeline (seperti footage di After Effects) =================
    Markup : <div class="clipbox"><video class="clip" src="assets/klip.mp4" muted playsinline preload="auto"></video></div>
    Pasang : const k = clip($('#v1'), {at:4, in:1.5, out:6, rate:1, hold:false});
@@ -203,11 +206,11 @@ gsap.ticker.add(function(){ if (CLIPS.length) syncClips(window.OPENER.tl.time(),
 window.OPENER.clipsReady = function(){ return CLIPS.every(function(c){ return c.el.readyState >= 2; }); };
 window.OPENER.seekFrame = function(t){ window.OPENER.seek(t); return seekClips(t); };   // ekspor/snap: tunggu frame klip
 addEventListener('keydown',e=>{if(/^[rR]$/.test(e.key))start();if(e.code==='Space'){e.preventDefault();tl.paused()?tl.play():tl.pause();}});
-if(q.has('debug')){const dbg=$('#dbg');dbg.style.display='flex';const sc=$('#dScrub'),ck=$('#dClock');let drag=false;
+if(q.has('debug')&&!isHF){const dbg=$('#dbg');dbg.style.display='flex';const sc=$('#dScrub'),ck=$('#dClock');let drag=false;
   gsap.ticker.add(()=>{if(!drag)sc.value=String(tl.time()/DUR*1000);ck.textContent=tl.time().toFixed(2)+'s';$('#dPlay').textContent=tl.paused()?'Play':'Pause';});
   sc.addEventListener('pointerdown',()=>{drag=true;tl.pause();});addEventListener('pointerup',()=>drag=false);
   sc.addEventListener('input',()=>{tl.pause();tl.time(sc.value/1000*DUR);});$('#dPlay').onclick=()=>tl.paused()?tl.play():tl.pause();}
-document.fonts.ready.then(()=>{render();window.OPENER.ready=true;if(q.has('clean'))return;
+document.fonts.ready.then(()=>{render();window.OPENER.ready=true;if(q.has('clean')||isHF)return;
   if(!hasVO){start();return;}
   /* ada suara: coba mulai langsung; bila autoplay diblokir, tahan frame 0 dan mulai pada klik/tombol pertama (tanpa teks petunjuk) */
   vo.play().then(()=>{audioOn=true;vo.currentTime=0;tl.play(0);}).catch(()=>{const go=()=>{removeEventListener('pointerdown',go);removeEventListener('keydown',go);start();};addEventListener('pointerdown',go);addEventListener('keydown',go);});});

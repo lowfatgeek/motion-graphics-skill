@@ -147,3 +147,24 @@ While modular multi-file structures are convenient during development, the final
 - Local assets (SVGs, images) use relative paths (`<img src="icon.png">` works reliably on `file://`).
 - Avoid `fetch()` or XHR calls to local files, which are blocked on `file://`.
 - Inform users that Node and Python are strictly development utilities; viewing the deliverable requires only a web browser.
+
+## Universal Web Video: Dual-Mode Compatibility (HyperFrames Ready)
+
+Every composition produced by this skill is **Universal Web Video**: it functions simultaneously as a zero-dependency standalone HTML page and as a first-class **HyperFrames** composition without code modification or format conversion.
+
+### The Universal Contract
+1. **Composition Root**: `#stage` defines `data-composition-id="main"`, `data-width="1920"`, and `data-height="1080"`.
+2. **Timeline Registry**: In addition to `window.OPENER.tl`, the master timeline is registered on `window.__timelines["main"] = tl`.
+3. **Environment Sniffing**:
+   ```javascript
+   const isHF = !!(window.__HYPERFRAMES__ || window.parent?.__HYPERFRAMES__ || location.search.includes('hf'));
+   ```
+   - **Standalone Mode** (`!isHF`): Autoplay enabled on font load, seamless loop, and optional in-browser scrubber via `?debug=1`.
+   - **HyperFrames Studio / Renderer Mode** (`isHF`): Autoplay and in-browser debug UI are automatically suppressed. HyperFrames takes full control of playback and transport via `window.__timelines`.
+4. **Seek-Safe Camera & Canvas Updates**:
+   ```javascript
+   tl.eventCallback('onUpdate', () => { applyCam(); render(); });
+   ```
+   Ensures that when HyperFrames steps through arbitrary time slices across parallel workers, the camera matrix and WebGL canvas update synchronously before each screenshot.
+5. **Decoupled SFX Pipeline**:
+   The output MP4—whether rendered via `scripts/export-frames.mjs` (Puppeteer) or `npx hyperframes render` (HyperFrames parallel workers)—is processed post-render by `scripts/sfx-cues.mjs` and `scripts/sfx-mix.mjs` with `-c:v copy`, ensuring zero re-rendering for audio adjustments.

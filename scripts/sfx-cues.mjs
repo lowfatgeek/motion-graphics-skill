@@ -8,8 +8,9 @@
    list down to a density the ear can follow, and writes assets/sfx-cues.json
    for scripts/sfx-mix.mjs to place.
 
-   Prerequisite: the page exposes window.OPENER = { ready, tl } — every starter
-   in this skill does. Nothing is played; the timeline is only walked.
+   Prerequisite: the page exposes window.OPENER = { ready, tl } or
+   window.__timelines["main"] (HyperFrames) — every starter in this skill does.
+   Nothing is played; the timeline is only walked.
 
    Usage (from the project folder; no server, no npm install, system Chrome):
      node <skill>/scripts/sfx-cues.mjs
@@ -113,7 +114,8 @@ const PROBE = `(() => {
     };
   };
   const out = { tweens: [] };
-  const root = window.OPENER.tl;
+  const root = (window.OPENER && window.OPENER.tl) || (window.__timelines && (window.__timelines.main || Object.values(window.__timelines)[0]));
+  if (!root) throw new Error('No GSAP timeline found on window.OPENER or window.__timelines');
   const walk = (tl, base, depth) => {
     let child = tl._first;
     while (child) {
@@ -280,10 +282,10 @@ await send('Page.enable'); await send('Runtime.enable');
 try { await send('Page.setWebLifecycleState', { state: 'active' }); } catch {}
 let ready = false;
 for (let i = 0; i < 240 && !ready; i++) {
-  ready = await ev('!!(window.OPENER && window.OPENER.ready)');
+  ready = await ev('!!((window.OPENER && window.OPENER.ready) || (window.__timelines && Object.keys(window.__timelines).length > 0))');
   if (!ready) await new Promise(r => setTimeout(r, 250));
 }
-if (!ready) { console.error('window.OPENER.ready tidak muncul — halaman ini tidak bisa ditambang.'); process.exit(1); }
+if (!ready) { console.error('Timeline (window.OPENER.ready atau window.__timelines) tidak muncul — halaman ini tidak bisa ditambang.'); process.exit(1); }
 const probed = JSON.parse(await ev(PROBE));
 ws.close(); cleanup();
 

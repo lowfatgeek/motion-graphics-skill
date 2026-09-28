@@ -7,7 +7,7 @@
 **An agent skill that turns your AI coding agent into a motion designer.**<br>
 Openers, promos, product demos, kinetic typography, and explainers — built as a single `index.html` that plays like video, not like slides.
 
-[![Version](https://img.shields.io/badge/version-1.22.0-2f6fd6?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.23.0-2f6fd6?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3fa34d?style=flat-square)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/format-Agent%20Skills-1c2a4a?style=flat-square)](#install)
 [![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Gemini%20CLI%20%C2%B7%20Cursor-7a5af5?style=flat-square)](#install)
@@ -306,7 +306,13 @@ node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav --stems sfx-stems
 ```
 The miner classifies every tween by what actually moved and prunes to a density the ear can follow (a validated 285-second explainer: 824 tweens → 422 candidates → 219 cues, or 288 with `--word-clicks`). The mixer builds one stem per family, snaps each hit onto the frame grid, ducks the sustained families ~13 dB under the narration, limits, muxes, then prints measured loudness and true peak. Full guide: [`references/sound-design.md`](references/sound-design.md).
 
-For detailed architecture, voice aliases, and GSAP sync patterns, see [`references/elevenlabs-audio.md`](references/elevenlabs-audio.md).
+### 5. Universal Web Video & HyperFrames Studio / Turbo Render
+Every composition is dual-compatible out of the box:
+- **Zero-Dependency Mode**: Double-click `index.html` to play directly in any browser (append `?debug=1` for the scrubber bar), or render frame-by-frame via `node scripts/export-frames.mjs`.
+- **HyperFrames Studio & Multi-Worker Turbo**: Run `npx hyperframes preview` for an interactive studio UI with frame stepping and hot reload, or render with `npx hyperframes render --workers 8 --output final.mp4` for multi-threaded parallel speed.
+- **Unified Audio Pipeline**: Both render engines produce standard MP4 files that plug directly into the post-render sound design workflow (`sfx-cues.mjs` + `sfx-mix.mjs`) with zero video re-rendering (`-c:v copy`).
+
+For detailed architecture, voice aliases, and GSAP sync patterns, see [`references/elevenlabs-audio.md`](references/elevenlabs-audio.md) and [`references/architecture.md`](references/architecture.md).
 
 ## Repository layout
 
@@ -328,6 +334,7 @@ assets/
   starter-opener.html            opener / promo architecture (GSAP + Three.js)
   starter-explainer*.html        one starter per explainer style
   sfx/                           26 sound effects in 10 families + library.json, manifest, SOURCES
+  hyperframes.config.json        pre-configured settings for HyperFrames CLI
 scripts/
   elevenlabs_audio.py            ElevenLabs TTS & STT audio CLI engine (zero dependencies)
   sfx-cues.mjs                   mine a cue sheet from the rendered GSAP timeline
@@ -341,6 +348,12 @@ docs/gallery/                    README preview images
 ```
 
 ## FAQ
+
+<details>
+<summary><b>Can I use HyperFrames with Motion Bang Bang?</b></summary>
+
+Yes! Every starter template is **Universal Web Video**: it carries `data-composition-id="main"` on `#stage` and registers `window.__timelines["main"] = tl`. You can preview compositions in HyperFrames Studio with `npx hyperframes preview` and render MP4s with multi-worker parallelism via `npx hyperframes render --workers 8 --output final.mp4`, while keeping the full power of Motion Bang Bang's design rules and post-render SFX mining.
+</details>
 
 <details>
 <summary><b>Is the output a video file?</b></summary>
