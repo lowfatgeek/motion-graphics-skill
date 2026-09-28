@@ -18,6 +18,14 @@
      URL="file:///C:/proyek/index.html?clean=1" BUNDLE="C:/skill/assets/sfx" node sfx-cues.mjs
      --out assets/sfx-cues.json  --fps 30  --land-at 0.5  --mask-ms 60  --max-per-s 1.6
      --chrome <path-to-chrome>  --port 9344
+     --word-clicks   # text reveals are answered by the camera layer, one click per word
+
+   --word-clicks is a different contract from the rest of the sheet. The normal
+   rule is "one sound per event, sparse enough to follow". A word-by-word
+   caption is not one event: it is a roll of small events, and a viewer who sees
+   twelve words arrive expects twelve clicks. Those cues are texture, so they
+   skip the masking and global-budget pruners and are limited only by their
+   family's max_hits_per_s.
 
    That run on a real 285 s explainer: 824 tweens -> 422 candidates -> 219 cues,
    0.77 cue/second. The printed tally is the point of the tool: cue counts per
@@ -53,10 +61,11 @@ const MAX_PER_S = Number(opt('max-per-s', 1.6));
 const MASK_MS = Number(opt('mask-ms', 60));    // two sounds inside 60 ms read as one event
 const PORT = Number(opt('port', 9344));
 const PROFILE = opt('profile', join(PROJ, '.sfx-profile'));
+const WORD_CLICKS = argv.includes('--word-clicks');
 
 /* Families ranked by how much they need to be heard. When two cues collide the
    stronger one wins, which is what stops a page-turn from eating an impact. */
-const PRIORITY = ['impact', 'transition', 'stamp', 'whoosh', 'accent', 'paper', 'pen', 'ui', 'ambience'];
+const PRIORITY = ['impact', 'transition', 'stamp', 'whoosh', 'accent', 'paper', 'pen', 'ui', 'camera', 'ambience'];
 const rank = (f) => { const i = PRIORITY.indexOf(f); return i < 0 ? 99 : i; };
 
 const manifest = JSON.parse(readFileSync(join(BUNDLE, 'manifest.json'), 'utf8'));
@@ -71,6 +80,17 @@ for (const a of assets) for (const v of (a.trigger || [])) if (!(v in byVerb)) b
 const byFamily = {};
 for (const a of assets) (byFamily[a.family] = byFamily[a.family] || []).push(a);
 const pick = (family, key) => (byFamily[family] || []).find(a => a.file.includes(key)) || (byFamily[family] || [])[0];
+
+/* Every take that answers a verb, in manifest order. A roll of twelve clicks over
+   one caption must not be one recording twelve times: rotation is what keeps a
+   dense layer from reading as a machine gun. */
+const byVerbPool = {};
+for (const a of assets) for (const v of (a.trigger || [])) (byVerbPool[v] = byVerbPool[v] || []).push(a);
+let roll = 0;
+const pickVerb = (verb) => {
+  const pool = byVerbPool[verb] || [];
+  return pool.length ? pool[roll++ % pool.length] : byVerb[verb];
+};
 
 /* ---- browser side: describe every motion the timeline contains ------------ */
 const PROBE = `(() => {
@@ -105,8 +125,24 @@ const PROBE = `(() => {
       const to = child.vars || {};
       const from = (child._startAt && child._startAt.vars) || (typeof to.startAt === 'object' && to.startAt) || {};
       const p = propsOf(to);
+      // A staggered reveal is N events wearing one tween's clothes. Read the step
+      // and the count so the roll can be written out; GSAP reports the whole spread
+      // in duration(), so the per-element ramp has to come from vars.
+      const stg = (() => {
+        const s = to.stagger;
+        if (typeof s === 'number' && isFinite(s)) return Math.abs(s);
+        if (s && typeof s === 'object') {
+          const each = n(s.each);
+          if (each !== null) return Math.abs(each);
+          const amount = n(s.amount);
+          if (amount !== null && targets.length > 1) return Math.abs(amount) / (targets.length - 1);
+        }
+        return 0;
+      })();
       out.tweens.push({
         at, dur: child.duration ? child.duration() : 0, depth,
+        stg, nTargets: targets.length,
+        baseDur: n(to.duration) !== null ? n(to.duration) : (child.duration ? child.duration() : 0),
         data: typeof child.data === 'string' ? child.data : (typeof to.data === 'string' ? to.data : ''),
         ease: typeof to.ease === 'string' ? to.ease : '',
         repeat: to.repeat === -1 || (child.repeat && child.repeat() === -1) ? -1 : (to.repeat || 0),
@@ -259,6 +295,33 @@ const END = Math.min(probed.duration, probed.frameEnd || probed.duration);
 for (const tw of probed.tweens.slice().sort((a, b) => a.at - b.at)) {
   if (tw.repeat === -1) { dropped.looping++; continue; }
   const rule = classify(tw);
+  const fadesInNow = tw.props.includes('opacity') && (tw.to.opacity ?? 0) > 0.5;
+  const isText = tw.dom && !!tw.els[0] && tw.els[0].text;
+  /* A word-by-word caption is twelve small events wearing one tween. The eye
+     counts them, so the ear has to be offered twelve clicks. Only text rolls
+     qualify, and only up to 40 targets: a 200-element stagger is a particle
+     field, and one sound per particle is noise, not rhythm. */
+  if (WORD_CLICKS && isText && fadesInNow && tw.stg > 0 && tw.nTargets >= 2 && tw.nTargets <= 40) {
+    const base = tw.at + tw.baseDur * LAND_AT;
+    for (let i = 0; i < tw.nTargets; i++) {
+      const at = base + i * tw.stg;
+      if (at > END - 0.02 || at < 0) { dropped.beyond++; continue; }
+      const asset = pickVerb('word');
+      if (!asset) { dropped.unclassified++; continue; }
+      cues.push({
+        t: round(at), frame: Math.round(at * FPS), family: asset.family, file: asset.file,
+        strength: 0.45, motion: round(tw.stg), verb: 'word',
+        on: tw.els[0].sel + ' word ' + (i + 1) + '/' + tw.nTargets,
+        _rank: rank(asset.family), _texture: true,
+      });
+    }
+    continue;
+  }
+  // Text that arrives as one block still gets the camera click, just once.
+  if (WORD_CLICKS && isText && fadesInNow && rule && ['say', 'label', 'pop'].includes(rule.verb)) {
+    const asset = pickVerb('word');
+    if (asset) { rule.verb = 'word'; rule.asset = asset; rule.strength = 0.5; }
+  }
   if (!rule || !rule.asset) {
     dropped.unclassified++;
     const sig = (tw.dom ? (tw.els[0] && tw.els[0].sel) || 'el' : 'rig') + ' ' + tw.props.slice(0, 4).join(',');
@@ -278,30 +341,37 @@ for (const tw of probed.tweens.slice().sort((a, b) => a.at - b.at)) {
    density are tuned in one file. Then masking, then the global budget. */
 cues.sort((a, b) => a.t - b.t || a._rank - b._rank);
 const kept = [], lastByFamily = {};
+let lastEvent = null;
 const gap = 1 / MAX_PER_S;
 for (const c of cues) {
   const minGap = (mix[c.family] || {}).max_hits_per_s ? 1 / (mix[c.family].max_hits_per_s) : 0.35;
   if (c.t - (lastByFamily[c.family] ?? -9) < minGap) { dropped.density++; continue; }
-  if (kept.some(k => Math.abs(k.t - c.t) * 1000 < MASK_MS && k._rank <= c._rank)) { dropped.masked++; continue; }
-  if (kept.length && c.t - kept[kept.length - 1].t < gap) { dropped.budget++; continue; }
+  // Texture keeps its own beat, and gives its own beat back: a click the ear has been
+  // following must neither vanish beside a whoosh nor spend the gap that whoosh needed.
+  if (!c._texture && kept.some(k => Math.abs(k.t - c.t) * 1000 < MASK_MS && k._rank <= c._rank)) { dropped.masked++; continue; }
+  if (!c._texture && lastEvent !== null && c.t - lastEvent < gap) { dropped.budget++; continue; }
   kept.push(c); lastByFamily[c.family] = c.t;
+  if (!c._texture) lastEvent = c.t;
 }
-for (const c of kept) delete c._rank;
+const texture = kept.filter(c => c._texture).length;
+for (const c of kept) { delete c._rank; delete c._texture; }
 
 const perFamily = {}, perFile = {};
 for (const c of kept) {
   perFamily[c.family] = (perFamily[c.family] || 0) + 1;
   perFile[c.file] = (perFile[c.file] || 0) + 1;
 }
+const secs = Math.max(1, probed.duration);
 const sheet = {
   generated: new Date().toISOString().slice(0, 10),
   page: PAGE, bundle: BUNDLE.replace(/\\/g, '/'), fps: FPS,
   duration: round(probed.duration), cuesEnd: kept.length ? kept[kept.length - 1].t : 0,
-  landAt: LAND_AT, maskMs: MASK_MS, maxPerSecond: MAX_PER_S,
+  landAt: LAND_AT, maskMs: MASK_MS, maxPerSecond: MAX_PER_S, wordClicks: WORD_CLICKS,
   stats: {
     tweens: probed.tweens.length, candidates: cues.length, kept: kept.length,
-    perSecond: round(kept.length / Math.max(1, probed.duration)),
-    dropped, byFamily: perFamily, byFile: Object.fromEntries(
+    perSecond: round(kept.length / secs),
+    events: kept.length - texture, eventsPerSecond: round((kept.length - texture) / secs),
+    texture, dropped, byFamily: perFamily, byFile: Object.fromEntries(
       Object.entries(perFile).sort((a, b) => b[1] - a[1])),
   },
   cues: kept,
@@ -310,7 +380,8 @@ const sheet = {
 const tally = (o) => Object.entries(o).map(([k, v]) => `${k}=${v}`).join(' ');
 console.log('\n' + '='.repeat(62));
 console.log(`  SFX CUES   ${probed.tweens.length} motion tween -> ${cues.length} kandidat -> ${kept.length} cue`);
-console.log(`  density    ${sheet.stats.perSecond} cue/detik selama ${round(probed.duration)}s`);
+console.log(`  density    ${sheet.stats.perSecond} cue/detik selama ${round(probed.duration)}s` +
+  (texture ? `   (${sheet.stats.eventsPerSecond} events + ${round(texture / secs)} texture)` : ''));
 console.log('='.repeat(62));
 console.log('  per family  ' + tally(perFamily));
 console.log('  per take    ' + tally(Object.fromEntries(Object.entries(perFile).map(([k, v]) => [k.split('/').pop(), v]))));

@@ -314,7 +314,7 @@ To turn a raw talking-head avatar video into an engaging viral/social motion gra
 
 ## 7. Sound Effects (SFX) Bundle
 
-`assets/sfx/` ships 20 generated takes across 9 motion families (`impact`, `stamp`, `whoosh`, `transition`, `accent`, `paper`, `pen`, `ui`, `ambience`). **Use the bundle; do not re-generate it for a project.** The CLI exists to maintain it.
+`assets/sfx/` ships 26 takes across 10 motion families (`impact`, `stamp`, `whoosh`, `transition`, `accent`, `paper`, `pen`, `ui`, `camera`, `ambience`). **Use the bundle; do not re-generate it for a project.** The CLI exists to maintain it.
 
 ```bash
 # Regenerate/maintain from the spec. Existing files are skipped unless --force,
@@ -330,6 +330,7 @@ python scripts/elevenlabs_audio.py sfx --spec assets/sfx/library.json --renormal
 - **Every prompt names source + surface + mic perspective and forbids musical content.** A tonal stinger collides with any music bed added later.
 - **One contract for all files** (48 kHz / stereo / PCM-16, peak −3 dBFS by pure gain, head ≤ 15 ms) so intensity stays a mix-time parameter rather than a property of the recording. Details and rationale: `references/sound-design.md` §1.
 - `manifest.json` records per-file measured provenance (duration, peak, RMS, head, prompt, date); `SOURCES.md` is the human-readable version plus the per-family mix table.
+- **Hand-generated takes join the same contract.** Files made in the ElevenLabs dashboard (or anywhere else) go through `--renormalize` like any other, keep their originals in an `_originals/` subfolder, and get their `trigger` words and family written into `manifest.json` by hand — the cue miner only knows a sound exists if a trigger verb points at it. The `camera` family (shutter clicks, film-advance mechanism) arrived this way, so `library.json` has no prompt for it and `manifest.json` is its only record.
 - **Licensing is the user's decision.** Output belongs to the user and may be used outside the service, but free tiers are non-commercial, and the Sound Effects sublicensing opt-out lives in the ElevenLabs dashboard. Record the plan tier in `manifest.json`; the tooling never touches account settings.
 
 ---
@@ -340,7 +341,8 @@ Placing is **not** an ElevenLabs job and **not** an in-page job. Two zero-depend
 
 ```bash
 node scripts/sfx-cues.mjs --why                 # 824 tweens -> 422 candidates -> 219 cues
+node scripts/sfx-cues.mjs --word-clicks         # 275 cues: one click per word in a staggered caption
 node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav --stems sfx-stems
 ```
 
-The cue miner walks `window.OPENER.tl` in system Chrome and classifies each motion by what actually moved; the mixer renders one stem per family, snaps every cue onto the frame grid, ducks `whoosh`/`paper`/`pen`/`ui` under the voice with a sidechain, limits the bus, muxes, then prints the measured loudness. Full pipeline, density targets and the verification checklist: `references/sound-design.md`.
+The cue miner walks `window.OPENER.tl` in system Chrome and classifies each motion by what actually moved; a staggered text reveal unrolls into one cue per element under `--word-clicks`. The mixer renders one stem per family, places every cue from the sheet's `frame` value, ducks `whoosh`/`paper`/`pen`/`ui` under the voice with a sidechain, limits the bus, muxes, then prints the measured loudness. Full pipeline, density targets and the verification checklist: `references/sound-design.md`.

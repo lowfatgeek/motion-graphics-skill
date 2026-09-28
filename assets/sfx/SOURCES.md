@@ -9,6 +9,12 @@ License: Generated 2026-09-26 on an ElevenLabs Creator subscription (paid plan),
 | `accent/accent-metal-cling-01.wav` | accent | counter, slam | 1.00 s | -3.0 dBFS | -26.0 dBFS | 0 ms | no | Small glass bell or coin struck once, clean bright single no... |
 | `accent/counter-tick-mech-01.wav` | accent | counter, grow | 0.38 s | -3.0 dBFS | -28.3 dBFS | 0 ms | no | Single mechanical clock tick, dry, tight, close mic, no reve... |
 | `ambience/room-tone-paper-loop-01.wav` | ambience | bed | 5.60 s | -3.0 dBFS | -16.9 dBFS | 0 ms | yes | Very quiet archive room tone, steady even level from start t... |
+| `camera/camera-cock-mech-01.wav` | camera | word | 0.15 s | -3.0 dBFS | -21.3 dBFS | 0 ms | no | Single mechanical camera cocking, one tight click, dry, clos... |
+| `camera/camera-cock-mech-02.wav` | camera | advance | 0.80 s | -3.0 dBFS | -25.2 dBFS | 0 ms | no | Single mechanical camera film advance, wind with several par... |
+| `camera/camera-cock-mech-03.wav` | camera | advance | 0.80 s | -3.0 dBFS | -29.3 dBFS | 0 ms | no | Single mechanical camera film advance, wind with several par... |
+| `camera/camera-cock-mech-04.wav` | camera | advance | 0.80 s | -3.0 dBFS | -28.3 dBFS | 0 ms | no | Single mechanical camera film advance, wind with several par... |
+| `camera/camera-shutter-click-01.wav` | camera | word, shutter | 0.12 s | -3.0 dBFS | -17.8 dBFS | 0 ms | no | Single camera shutter, one tight click, mirror slap, dry, cl... |
+| `camera/camera-shutter-click-02.wav` | camera | shutter | 0.80 s | -3.0 dBFS | -24.2 dBFS | 0 ms | no | Single camera shutter with the mirror-mechanism tail, dry, c... |
 | `impact/impact-dry-03.wav` | impact | block, swap, slam | 0.20 s | -3.0 dBFS | -25.6 dBFS | 0 ms | no | Two knuckles knocking once on a wooden table, short dry knoc... |
 | `impact/impact-heavy-01.wav` | impact | slam, fly, block | 1.20 s | -3.0 dBFS | -31.2 dBFS | 0 ms | no | Heavy object dropped onto a solid wooden table, deep soft th... |
 | `impact/impact-medium-02.wav` | impact | slam, pop, fly | 0.88 s | -3.0 dBFS | -25.5 dBFS | 0 ms | no | Thick hardcover book dropped flat onto a desk, dull cardboar... |
@@ -35,6 +41,7 @@ Relative to each file's normalised peak. Every asset peaks at the same place on 
 |---|---|---|---|
 | accent | -12 dB | 1 | no |
 | ambience | -30 dB | 0 | no |
+| camera | -19 dB | 20 | no |
 | impact | -6 dB | 2 | no |
 | paper | -13 dB | 2 | yes |
 | pen | -14 dB | 1.5 | yes |

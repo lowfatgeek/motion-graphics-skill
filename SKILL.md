@@ -9,13 +9,13 @@ metadata:
   original_author_url: https://youtube.com/bangtutorial
   original_project: Bang Motion
   original_homepage: https://github.com/bangtutorial/bang-motion
-  version: "1.21.0"
+  version: "1.22.0"
   updated: "2026-09-26"
 ---
 
 # Motion Bang Bang — Web Motion Graphics That Move Like Video, Not Slides
 
-**v1.21.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
+**v1.22.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
 
 This skill is designed for any AI coding agent (open Agent Skills specification). It defines strict principles and production recipes for motion graphics that behave like real video rather than slide presentations. **Read and enforce these rules before writing any code.**
 
@@ -36,7 +36,7 @@ If the user has neither Python nor Node:
 **FFmpeg and AI Audio tooling:**
 - **Voiceover Generation (TTS)**: When an ElevenLabs API key is present (`ELEVENLABS_API_KEY`), run `python scripts/elevenlabs_audio.py tts --text "..." --output assets/vo.mp3` to instantly generate studio audio, word-level timestamps (`assets/vo-timestamps.json`), and scene pause markers.
 - **Talking-Head Avatar Transcription (STT)**: Run `python scripts/elevenlabs_audio.py stt --file assets/avatar.mp4` to produce word-level transcriptions and `.srt`/`.vtt` subtitles for kinetic typography.
-- **Sound Effects**: `assets/sfx/` already ships 20 generated takes across 9 motion families — use them, do not re-generate. Mine the cues from a rendered composition with `node scripts/sfx-cues.mjs`, then place and mix with `node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav` (needs `ffmpeg`; the video stream is copied, never re-rendered). Full pipeline in `references/sound-design.md`; confirm the plan tier with the user before commercial use.
+- **Sound Effects**: `assets/sfx/` already ships 26 generated takes across 10 motion families — use them, do not re-generate. Mine the cues from a rendered composition with `node scripts/sfx-cues.mjs` (add `--word-clicks` when captions reveal word by word and each word should be heard), then place and mix with `node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav` (needs `ffmpeg`; the video stream is copied, never re-rendered). Full pipeline in `references/sound-design.md`; confirm the plan tier with the user before commercial use.
 - **FFmpeg is also optional.** Check first with `ffmpeg -version`. If unavailable:
 
 | Task | With ElevenLabs / FFmpeg | Without ElevenLabs / FFmpeg |
@@ -45,7 +45,7 @@ If the user has neither Python nor Node:
 | Talking-head avatar transcription & captions | `scripts/elevenlabs_audio.py stt` (word timestamps, SRT/VTT) | User supplies pre-written transcript or manual markers |
 | Voiceover pause detection | `scripts/elevenlabs_audio.py tts` or `ffmpeg silencedetect` | `scripts/vo-pauses.html` — open in browser, load audio file, copy markers |
 | Audio duration and format check | `ffprobe` or `elevenlabs_audio.py` | `DUR` value from `scripts/vo-pauses.html`; modern browsers play WAV/MP3/M4A natively |
-| Sound-effect bundle (20 takes, 9 families) | Already on disk: audition `assets/sfx/_preview.wav`, extend with `elevenlabs_audio.py sfx` | Ask the user for a licensed SFX folder in the same layout |
+| Sound-effect bundle (26 takes, 10 families) | Already on disk: audition `assets/sfx/_preview.wav`, extend with `elevenlabs_audio.py sfx` | Ask the user for a licensed SFX folder in the same layout |
 | SFX cue sheet from the animation | `scripts/sfx-cues.mjs` (walks `window.OPENER.tl` in Chrome) | Hand-write `assets/sfx-cues.json` from the scene rundown — expect it to drift on every retime |
 | SFX mix onto the rendered MP4 | `scripts/sfx-mix.mjs` (per-family stems, ducking, limiter, `-c:v copy`) | Place effects in the user's NLE from the cue sheet's `t` values |
 | MP4 Export | Stitch PNG sequence from `export-frames.mjs` | No direct MP4 export — suggest 1-command install (`winget install Gyan.FFmpeg` / `brew install ffmpeg`) or screen recording |
@@ -208,9 +208,9 @@ Key Typographic Guidelines (see `references/techniques.md` §1 & §1b):
    - **Render MP4 ONLY when explicitly requested** (`scripts/export-frames.mjs` $\rightarrow$ FFmpeg compilation).
 6b. **Sound Design (only when a rendered MP4 ships)**:
    - Sound effects are a **post-render** step, never page content: do not add `<audio>` effect tags to `index.html`. The mixer copies the video stream, so the approved picture is untouched and retuning audio costs zero frames.
-   - Mine the cues from the finished timeline (`node scripts/sfx-cues.mjs`), read the printed tally and `--why`, then mix (`node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav --stems sfx-stems`).
+   - Mine the cues from the finished timeline (`node scripts/sfx-cues.mjs`), read the printed tally and `--why`, then mix (`node scripts/sfx-mix.mjs --video final.mp4 --vo assets/vo.wav --stems sfx-stems`). Where captions reveal word by word, add `--word-clicks` so each word gets its own click instead of one click per sentence.
    - Verify with measurements, not ears: raw video payload hash identical, frame count unchanged, integrated loudness within ~1.5 dB of the VO-only file, true peak under −0.1 dBFS, stem event onsets inside one frame of the cue times. See `references/sound-design.md` §4.
-   - Default density is 0.7–0.9 cue/s; `impact`, `stamp`, and `accent` stay unducked while `whoosh`, `paper`, `pen`, and `ui` duck under the narration.
+   - Default density is 0.7–0.9 cue/s for event cues; `impact`, `stamp`, and `accent` stay unducked while `whoosh`, `paper`, `pen`, and `ui` duck under the narration. `camera` clicks are texture — they bypass the mask window and the global budget on purpose, so a 4-word caption is 4 clicks.
 7. **Explainer Deliverable Requirement**:
    - The closing handoff message MUST contain the complete voiceover script formatted paragraph-by-paragraph with instructions for the user to record/generate VO audio and return it for synchronization (`references/explainer.md` "Handoff").
 
@@ -236,7 +236,7 @@ Key Typographic Guidelines (see `references/techniques.md` §1 & §1b):
 - [ ] **Visual Snapshot Verification Completed**: Inspected key frames via `scripts/snap.mjs` or `?debug=1`.
 - [ ] **Audio Autoplay Fallback Tested**: Pauses cleanly on frame 0 if autoplay is blocked, resuming on first interaction.
 - [ ] **No Effects Embedded in the Page**: Sound design lives in the post-render mix; `index.html` carries the voiceover only.
-- [ ] **Cue Sheet Read, Not Assumed** (MP4 delivery): `sfx-cues.mjs` tally and `--why` inspected; density in the 0.7–0.9 cue/s band; camera whooshes counted against actual camera cuts.
+- [ ] **Cue Sheet Read, Not Assumed** (MP4 delivery): `sfx-cues.mjs` tally and `--why` inspected; **event** density in the 0.7–0.9 cue/s band (texture counted separately); camera whooshes counted against actual camera cuts; per-word clicks counted against actual words (every staggered roll complete, none truncated).
 - [ ] **Picture Proven Untouched** (MP4 delivery): Raw video payload hashes match between input and mixed output, and the frame count is unchanged.
 - [ ] **Mix Measured, Not Judged** (MP4 delivery): Integrated loudness within ~1.5 dB of the VO-only track, true peak under −0.1 dBFS, ducking verified across one speech window and one narration gap.
 - [ ] **Double-Clickable Output**: Runs cleanly from `file://` with inline CSS/JS and no broken local imports.
@@ -278,7 +278,7 @@ When After Effects is running, the Higgsfield `ae_*` MCP bridge is connected, an
 | `references/roadmap.md` | Reference for architectural evolution, design rationale, and expanding skill capabilities. |
 | `references/elevenlabs-audio.md` | **Mandatory** for audio & speech: ElevenLabs TTS voiceover generation, word/sentence timestamps, and STT talking-head avatar captions. |
 | `references/sound-design.md` | **Mandatory** when a rendered MP4 needs sound effects: bundle contract, cue mining from the timeline, ducking/ceiling, and the measurement checklist. |
-| `assets/sfx/` | The shipped SFX library: 20 takes across 9 motion families, all 48 kHz/stereo/PCM-16 at −3 dBFS. `library.json` holds the prompts and per-family mix intent; `manifest.json` holds measured provenance. |
+| `assets/sfx/` | The shipped SFX library: 26 takes across 10 motion families, all 48 kHz/stereo/PCM-16 at −3 dBFS. `library.json` holds the prompts and per-family mix intent; `manifest.json` holds measured provenance. |
 | `assets/starter-opener.html` | Base code template for openers, promos, bumpers, and kinetic typography. |
 | `assets/starter-explainer.html` | Base template for continuous action vector explainers (flowing world + map views). |
 | `assets/starter-explainer-kartun.html` | Base template for cartoon collage explainers (cream paper texture, cutouts, marker pills). |
@@ -287,7 +287,7 @@ When After Effects is running, the Higgsfield `ae_*` MCP bridge is connected, an
 | `assets/starter-explainer-sketsa.html` | Base template for vintage sketch explainers (sepia parchment, engraving illustrations, classic serifs). |
 | `assets/starter-explainer-panggung.html` | Base template for cartoon stage explainers (multi-stage system, jointed puppet rigs, diegetic labels). |
 | `scripts/elevenlabs_audio.py` | ElevenLabs CLI engine (zero-dependency): generates TTS audio with timestamps, transcribes STT audio/video, exports SRT/VTT, and generates/audits/repairs the `assets/sfx/` bundle. |
-| `scripts/sfx-cues.mjs` | Mines a sound cue sheet out of the rendered timeline (`window.OPENER.tl`) in system Chrome: classifies each motion into a family, prunes to a listenable density, prints the tally. |
+| `scripts/sfx-cues.mjs` | Mines a sound cue sheet out of the rendered timeline (`window.OPENER.tl`) in system Chrome: classifies each motion into a family, prunes to a listenable density, unrolls staggered captions into one cue per word with `--word-clicks`, prints the tally. |
 | `scripts/sfx-mix.mjs` | Places the cue sheet onto a rendered MP4: per-family stems, frame-snapped delays, sidechain ducking under the voice, limiter, then muxes with the video stream copied. |
 | `scripts/serve.py` | Local zero-cache development server (`Cache-Control: no-store`). |
 | `scripts/snap.mjs` | Automated visual verification tool: captures keyframe snapshots into a contact sheet via Puppeteer. |

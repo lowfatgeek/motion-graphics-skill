@@ -57,6 +57,11 @@
       "max_hits_per_s": 0,
       "duck_under_speech": false,
       "continuous": true
+    },
+    "camera": {
+      "gain_db": -19,
+      "max_hits_per_s": 20,
+      "duck_under_speech": false
     }
   },
   "assets": [
@@ -131,6 +136,139 @@
       "clipped": 0,
       "warnings": [],
       "loop_seam_db": 1.65
+    },
+    {
+      "file": "camera/camera-cock-mech-01.wav",
+      "family": "camera",
+      "trigger": [
+        "word"
+      ],
+      "prompt": "Single mechanical camera cocking, one tight click, dry, close mic",
+      "requested_s": 0.15,
+      "duration_s": 0.1501,
+      "head_ms": 0.0,
+      "rms_dbfs": -21.32,
+      "peak_dbfs": -3.0,
+      "clipped": 0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "bit_depth": 16,
+      "loop": false,
+      "tight": true,
+      "source": "elevenlabs dashboard, generated manually by the account owner; imported to the bundle contract (mp3 kept at _originals/Single_mechanical_ca_#1-1790410099559.mp3)",
+      "generated": "2026-09-26",
+      "warnings": []
+    },
+    {
+      "file": "camera/camera-cock-mech-02.wav",
+      "family": "camera",
+      "trigger": [
+        "advance"
+      ],
+      "prompt": "Single mechanical camera film advance, wind with several parts, dry, close mic",
+      "requested_s": 0.8,
+      "duration_s": 0.8,
+      "head_ms": 0.0,
+      "rms_dbfs": -25.25,
+      "peak_dbfs": -3.0,
+      "clipped": 0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "bit_depth": 16,
+      "loop": false,
+      "tight": true,
+      "source": "elevenlabs dashboard, generated manually by the account owner; imported to the bundle contract (mp3 kept at _originals/Single_mechanical_ca_#2-1790410099559.mp3)",
+      "generated": "2026-09-26",
+      "warnings": []
+    },
+    {
+      "file": "camera/camera-cock-mech-03.wav",
+      "family": "camera",
+      "trigger": [
+        "advance"
+      ],
+      "prompt": "Single mechanical camera film advance, wind with several parts, dry, close mic",
+      "requested_s": 0.8,
+      "duration_s": 0.8,
+      "head_ms": 0.0,
+      "rms_dbfs": -29.27,
+      "peak_dbfs": -3.0,
+      "clipped": 0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "bit_depth": 16,
+      "loop": false,
+      "tight": true,
+      "source": "elevenlabs dashboard, generated manually by the account owner; imported to the bundle contract (mp3 kept at _originals/Single_mechanical_ca_#3-1790410099560.mp3)",
+      "generated": "2026-09-26",
+      "warnings": []
+    },
+    {
+      "file": "camera/camera-cock-mech-04.wav",
+      "family": "camera",
+      "trigger": [
+        "advance"
+      ],
+      "prompt": "Single mechanical camera film advance, wind with several parts, dry, close mic",
+      "requested_s": 0.8,
+      "duration_s": 0.8,
+      "head_ms": 0.0,
+      "rms_dbfs": -28.33,
+      "peak_dbfs": -3.0,
+      "clipped": 0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "bit_depth": 16,
+      "loop": false,
+      "tight": true,
+      "source": "elevenlabs dashboard, generated manually by the account owner; imported to the bundle contract (mp3 kept at _originals/Single_mechanical_ca_#4-1790410099561.mp3)",
+      "generated": "2026-09-26",
+      "warnings": []
+    },
+    {
+      "file": "camera/camera-shutter-click-01.wav",
+      "family": "camera",
+      "trigger": [
+        "word",
+        "shutter"
+      ],
+      "prompt": "Single camera shutter, one tight click, mirror slap, dry, close mic",
+      "requested_s": 0.12,
+      "duration_s": 0.1194,
+      "head_ms": 0.0,
+      "rms_dbfs": -17.76,
+      "peak_dbfs": -3.0,
+      "clipped": 0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "bit_depth": 16,
+      "loop": false,
+      "tight": true,
+      "source": "elevenlabs dashboard, generated manually by the account owner; imported to the bundle contract (mp3 kept at _originals/Single_camera_shutte_#1-1790410254450.mp3)",
+      "generated": "2026-09-26",
+      "warnings": []
+    },
+    {
+      "file": "camera/camera-shutter-click-02.wav",
+      "family": "camera",
+      "trigger": [
+        "shutter"
+      ],
+      "prompt": "Single camera shutter with the mirror-mechanism tail, dry, close mic",
+      "requested_s": 0.8,
+      "duration_s": 0.7969,
+      "head_ms": 0.0,
+      "rms_dbfs": -24.25,
+      "peak_dbfs": -3.0,
+      "clipped": 0,
+      "sample_rate": 48000,
+      "channels": 2,
+      "bit_depth": 16,
+      "loop": false,
+      "tight": true,
+      "source": "elevenlabs dashboard, generated manually by the account owner; imported to the bundle contract (mp3 kept at _originals/Single_camera_shutte_#4-1790410254455.mp3)",
+      "generated": "2026-09-26",
+      "warnings": []
     },
     {
       "file": "impact/impact-dry-03.wav",

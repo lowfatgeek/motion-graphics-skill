@@ -16,6 +16,7 @@ space-bunny/
 *.flac
 *.wav
 !assets/sfx/**/*.wav
+!assets/sfx/**/*.mp3
 
 # Working artifacts from previews and frame dumps.
 stems/

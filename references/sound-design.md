@@ -37,9 +37,16 @@ Run them in that order, after the picture is rendered. Steps 2 and 3 need only s
 | `paper` | −13 | 2 | yes | sheet flips, archive rustle, photo placed |
 | `pen` | −14 | 1.5 | yes | marker scribble, chalk brush, ink line |
 | `ui` | −18 | 3 | yes | soft clicks, sticker pops, toggles |
+| `camera` | −19 | 20 | no | shutter clicks and film-advance mech — one per word in a staggered caption |
 | `ambience` | −30 | — | no | room-tone bed, looped, sparse or absent |
 
 Gain is relative to the normalised −3 dBFS peak, so the ordering *is* the mix: a `ui` click is 12 dB below an `impact` before either is heard.
+
+`camera` sits at the quiet end and still gets a 20 hits/s cap, which looks contradictory until you read what it covers. A word-by-word caption at `stagger: 0.075` is 13 events per second. Every other family is capped far below that because it marks an *event*; this family marks *texture*, and a cap tuned for events would silently eat two thirds of the roll.
+
+### Hand-generated takes
+
+Not every take has to come from `library.json`. Files produced elsewhere (a dashboard generation, a purchase) can be dropped in as MP3/WAV — then normalise them into the contract with `--renormalize` (**no API call, no billing**) and add their records to `manifest.json` by hand: family, file, triggers, `gain_db`. Keep the source files in an `_originals/` subfolder next to the delivered WAVs so a future re-processing run has something to re-process, and remember that `SOURCES.md` and `_preview.wav` are *derived* from the manifest — regenerate both after editing it.
 
 ### Audition and repair, free of charge
 
@@ -69,6 +76,24 @@ Then three pruners, in order: a per-family rate cap (`max_hits_per_s`), a mask w
 
 Validated outcome on a 285 s explainer: **824 tweens → 422 candidates → 219 cues** (0.77 cue/s), split `whoosh` 120 / `ui` 43 / `impact` 38 / `paper` 18 — and the 19 camera whooshes inside that matched the 19 camera cuts counted by hand on the delivered cut.
 
+### `--word-clicks`: one sound per word, not per caption
+
+All three pruners assume a cue is an *event*. A staggered reveal breaks that assumption: `say(".line .w", at, {stagger: .075})` is **one tween** whose `child.duration()` already contains the whole spread, and whose listener count is the number of words. Mining it as one event gives a single click for a sentence that visibly types itself out word by word.
+
+With `--word-clicks`, a tween that fades text in, has a stagger, and targets between 2 and 40 elements is unrolled into one cue per element at `at + baseDuration·land-at + i·stagger`, each tagged `verb:"word"` and marked as texture so the mask window and the global budget skip it. Two details carry the whole feature:
+
+- **Per-element duration comes from `vars.duration`, not `child.duration()`** — the latter is the roll's total, and using it drags every click a few hundred milliseconds late off its word.
+- **Words fading *out* stay excluded.** `unsay()` staggers the same elements away, and a click on each disappearing word reads as a machine, not a camera.
+
+Word takes rotate through the pool instead of repeating one file: every asset whose `trigger` list contains `word` is used in turn, which is what keeps a 90-click roll from sounding like a stuck shutter. Words inside a highlight span count as one unit (the DOM split, not the count, is what the viewer sees), so a caption's click count can be lower than its word count.
+
+**Texture must not spend the event budget.** The mask window and the global budget exist to protect events from each other, so a texture cue is exempt from both — and it must also stay invisible to them. Measuring the gap against "the last cue kept of any kind" instead of "the last *event*" let the clicks eat the 0.625 s the following whoosh needed: the first version of this feature printed 275 cues and had silently dropped 12 whooshes and one impact to a caption. The tally therefore splits events from texture, and the event rate is what gets compared against the same project mined without the flag.
+
+Validated outcome, same 285 s explainer re-mined with the flag: **219 → 288 cues**, `whoosh` 120 / `camera` 91 / `ui` 40 / `impact` 37 — 1.009/s total but **0.764 event/s against 0.767/s without the flag**. 22 text cues changed family (18 `paper`, 3 `ui`, 1 `impact` became clicks) and nothing else moved. The 91 clicks are 21 unrolled rolls covering every caption (70 clicks, every roll verified complete) plus 21 single-block text reveals.
+
+Without the flag nothing changes — the mode is opt-in and the default sheet stays byte-identical.
+
+
 ### Density targets
 
 | Cue/s | Reads as |
@@ -76,6 +101,8 @@ Validated outcome on a 285 s explainer: **824 tweens → 422 candidates → 219 
 | 0.3–0.5 | punctuation only; safe for talking-head or minimal pieces |
 | 0.7–0.9 | designed; the default for explainers and promos |
 | $> 1.2$ | wasps' nest; the ear stops resolving individual events |
+
+These numbers are **event** density. Texture (a per-word click roll) sits on top of them and does not count: it is a surface, like room tone, and the ear tracks it as one object. A mix at 0.76 event/s plus 0.25 texture/s reads as designed; 1.01/s of events alone would not.
 
 Raise `--max-per-s` only after lowering family gains — loudness, not count, is what makes dense mixes unlistenable.
 
@@ -87,7 +114,7 @@ Stems are the whole design decision. A single 219-input `amix` cannot even be bu
 
 Three per-cue touches keep a small bundle from sounding like a small bundle:
 
-- **Frame snap**: `adelay` is computed from `round(t·fps)/fps`, so a cue lands on a picture frame, never between two.
+- **Frame snap**: `adelay` is computed from the sheet's **`frame`** field, converted to integer milliseconds (`round(frame/fps·1000)`), so a cue lands on a picture frame, never between two. Do not re-derive the frame from `t`: `t` is stored to 3 decimals, so a value ending in `.x5` multiplied by 30 lands exactly on `.5`, and `Math.round` tips those cues one frame late. The seed for the pitch spread is read from the same `frame`, so the two must never disagree.
 - **Gain from strength**: `gain_db + (strength − 0.5) · 6`, so a hard slam sits up to 6 dB above a soft one from the same take.
 - **Pitch spread**: ±2.5‰ detune seeded from the *frame number*, not the run order, so the same take reused twelve times is never a machine gun, and two runs give identical audio.
 
@@ -113,7 +140,7 @@ The agent cannot listen. Every claim above is checked with a measurement, and th
 - [ ] **Duration and frame count unchanged** (`ffprobe -count_frames`), and the output is a *new* filename; the approved file is never overwritten.
 - [ ] **Loudness**: `ffmpeg -i OUT -map 0:a -af ebur128=peak=true -f null -` → integrated, LRA, true peak.
 - [ ] **Ducking engaged**: measure one stem over a narration-dense window and a gap window, raw and through the sidechain. The gap must be near-unity and the speech window several dB down.
-- [ ] **Placement is honest**: run `silencedetect` on a short-decay stem and match event onsets against the cue sheet's `t` values. Median offset must be 0 and maximum under one frame (validated: median 0.0000 s, max 0.017 s against a 0.0333 s frame).
+- [ ] **Placement is honest**: run `silencedetect` on a short-decay stem and match event onsets against the cue sheet's `frame / fps`. Median offset must be 0 and maximum under one frame (validated: median 0.0000 s, max 0.017 s against a 0.0333 s frame). An RMS-envelope rise detector agrees with `silencedetect` to the millisecond and additionally survives overlapping cues, which is what a per-word roll is — but run the same detector on the **asset file alone** before believing an outlier: a shutter recording whose energy peak sits 16–21 ms in reports a "late" cue even when `adelay` is exact. Offsets at or above one frame are never the detector's fault; they are a placement bug.
 - [ ] **Nothing clipped**: true peak below −0.1 dBFS.
 - [ ] **Listen once at the end**: a mix can pass every number above and still be wrong. `--stems sfx-stems` leaves per-family WAVs for exactly this.
 
@@ -134,6 +161,9 @@ Each of these produced a wrong result that looked correct:
 - **Trim gate applied after gain** measures a different signal than the one delivered. Stage the gain first, then trim, and share one gate function.
 - **A loop seam judged over 10 ms** invents a problem: loudness integrates over ~150 ms. The paper bed measured a "+10 dB seam" that was 4 dB of ordinary level variation.
 - **`.from()` tweens keep their opening state in `vars.startAt`**, not `vars`. Missing it silenced every slam.
+- **A staggered reveal is one tween with the spread already inside its duration.** Reading `child.duration()` as the per-element ramp unrolled a 4-word caption into clicks 0.3 s apart from the words they belonged to.
+- **An exempt cue is not automatically an invisible one.** Making texture skip the pruners while still updating "the last kept time" let 91 quiet clicks spend the event budget and cost 12 whooshes and an impact — the tally grew, which is exactly what a loss looks like if you only count what you added.
+- **Two roundings of the same time are not the same number.** The sheet stores `t` to 3 decimals *and* `frame`; deriving the frame from `t` again moved `t = 15.55` (frame 466) to frame 467 — one frame late, and invisible in every tally because the cue count never changed. Carry `frame` through and read it once.
 - **A bare `{v}` proxy is not a counter** — that pattern is also how blur ramps are driven, and naming it as a counter produced 45 phantom ticks.
 - **`-ss` before `-i` applies to one input only.** Slicing a stem and a voice to the same window needs `-ss` before *each* `-i`, or the two halves of the test read different moments.
 - **`-af` cannot be attached to a stream that came out of `-filter_complex`** ("Simple and complex filtering cannot be used together"). Put the detector inside the graph.

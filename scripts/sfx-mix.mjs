@@ -88,9 +88,13 @@ for (const [fam, list] of Object.entries(families)) {
     const byFile = {};
     for (const c of chunk) (byFile[c.file] = byFile[c.file] || []).push(c);
     const branch = (src, c, tag) => {
-      const ms = Math.round(Math.round(c.t * FPS) / FPS * 1000);            // snap onto the frame grid
+      /* Trust the frame the miner chose. Re-deriving it from c.t rounds twice: the sheet
+         stores t to 3 decimals, and a t ending in .x5 multiplied by 30 lands exactly on
+         .5, which Math.round tipped one frame past the picture it was cut against. */
+      const frame = Number.isFinite(c.frame) ? c.frame : Math.round(c.t * FPS);
+      const ms = Math.round(frame / FPS * 1000);                             // snap onto the frame grid
       const gain = ((mix[fam] && typeof mix[fam].gain_db === 'number' ? mix[fam].gain_db : -12)) + (c.strength - 0.5) * 6;
-      const seed = ((c.frame * 2654435761) % 1000) / 1000;                  // stable per cue, not per run order
+      const seed = ((frame * 2654435761) % 1000) / 1000;                     // stable per cue, not per run order
       const rate = 1 + (seed - 0.5) * 2 * SPREAD / 1000;
       filters.push(`[${src}]asetrate=48000*${rate.toFixed(5)},aresample=48000,` +
         `volume=${dbToLinear(gain).toFixed(4)},adelay=${ms}|${ms}[${tag}]`);
