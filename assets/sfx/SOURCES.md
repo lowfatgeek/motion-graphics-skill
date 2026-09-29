@@ -32,6 +32,27 @@ License: Generated 2026-09-26 on an ElevenLabs Creator subscription (paid plan),
 | `whoosh/whoosh-camera-large-01.wav` | whoosh | into, settle, look, home | 0.66 s | -3.0 dBFS | -16.7 dBFS | 0 ms | no | Long smooth air sweep passing left to right, low mid whoosh,... |
 | `whoosh/whoosh-fast-thin-03.wav` | whoosh | flyOut, unlabel, pop | 0.16 s | -3.0 dBFS | -18.6 dBFS | 0 ms | no | Quick thin sheet of paper flicked through the air, high airy... |
 | `whoosh/whoosh-object-medium-02.wav` | whoosh | fly, flyOut | 0.29 s | -3.0 dBFS | -15.2 dBFS | 0 ms | no | Medium sized object passing quickly through air, whoosh with... |
+| `ui/comic-pop-toon-04.wav` | ui | pop, comic, bubble | 0.32 s | -3.0 dBFS | -18.6 dBFS | 0 ms | no | Cartoon bubble pop, cork pop sound, playful comic accent, dr... |
+| `ui/comic-pop-click-05.wav` | ui | pop, comic, click | 0.11 s | -3.0 dBFS | -16.2 dBFS | 0 ms | no | Bright clean comic icon pop, UI button click with punchy bub... |
+| `ambience/fire-crackle-paper-02.wav` | ambience | fire, crackle, burn | 1.66 s | -3.0 dBFS | -37.6 dBFS | 0 ms | yes | Subtle burning paper crackle, small flames, embers hissing, ... |
+| `ambience/fire-crackle-paper-03.wav` | ambience | fire, crackle, burn | 1.66 s | -3.0 dBFS | -35.5 dBFS | 0 ms | yes | Gentle flame crackle on dry paper, gentle smoke and hiss |
+| `ambience/ocean-waves-ambient-02.wav` | ambience | ocean, waves, water | 10.16 s | -3.0 dBFS | -24.0 dBFS | 0 ms | yes | Cinematic ocean waves ambience, distant sea surge, broad ste... |
+| `ambience/ocean-waves-coastal-03.wav` | ambience | ocean, waves, water | 9.80 s | -3.0 dBFS | -17.4 dBFS | 63 ms | yes | Coastal ocean wash, deep water rolling, soft foam |
+| `ambience/ocean-waves-gentle-04.wav` | ambience | ocean, waves, water | 30.00 s | -3.0 dBFS | -29.4 dBFS | 0 ms | yes | Gentle ocean waves surge and wash, continuous organic water ... |
+| `accent/ship-horn-deep-02.wav` | accent | horn, ship, boat, foghorn | 15.00 s | -3.0 dBFS | -16.1 dBFS | 0 ms | no | Deep powerful cargo ship horn, low resonant blast, distant e... |
+| `accent/ship-horn-cruise-03.wav` | accent | horn, ship, airhorn | 4.11 s | -3.0 dBFS | -9.4 dBFS | 0 ms | no | Ship air horn blast, clear maritime blast |
+| `ambience/tension-drone-sub-02.wav` | ambience | drone, tension, sub, bed | 10.00 s | -3.0 dBFS | -11.9 dBFS | 0 ms | yes | Epic cinematic tension bass drone, low 55Hz sub oscillation,... |
+| `ambience/tension-drone-sub-03.wav` | ambience | drone, tension, sub, bed | 10.00 s | -3.0 dBFS | -11.0 dBFS | 0 ms | yes | Dark documentary tension drone, subtle analog sub swell, low... |
+| `camera/typewriter-classic-03.wav` | camera | word, typewriter, click | 2.10 s | -3.0 dBFS | -19.5 dBFS | 0 ms | no | Classic typewriter key strike, crisp mechanical clack, dry, ... |
+| `camera/typewriter-classic-04.wav` | camera | word, typewriter, click | 2.25 s | -3.0 dBFS | -23.7 dBFS | 0 ms | no | Classic typewriter key strike variation, dry mechanical cont... |
+| `camera/typewriter-fast-roll-05.wav` | camera | typewriter, typing, burst | 2.25 s | -3.0 dBFS | -30.8 dBFS | 0 ms | no | Fast burst of vintage mechanical typing, steady rapid clacks |
+| `camera/typewriter-vintage-roll-06.wav` | camera | typewriter, typing, bed | 9.80 s | -3.0 dBFS | -26.3 dBFS | 1 ms | yes | Continuous vintage mechanical typewriter keystrokes and carr... |
+| `camera/typewriter-latch-mech-07.wav` | camera | word, typewriter, latch, bell | 0.37 s | -3.0 dBFS | -28.3 dBFS | 0 ms | no | Small brass metal mechanical latch click, crisp typewriter c... |
+
+## Takes with open warnings
+
+- `ambience/ocean-waves-coastal-03.wav` -- loop seam level jumps -6.6 dB
+- `camera/typewriter-vintage-roll-06.wav` -- loop seam level jumps -52.4 dB
 
 ## Mix intent per family
 

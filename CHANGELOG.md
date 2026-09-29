@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.24.0 — 2026-09-29
+
+**Style 7: Editorial Collage (Mixed-Media Journalism / Vox Style) & Expanded SFX Bundle**
+- **New Explainer Style 7 (Editorial Collage)**: Designed for geopolitical, macroeconomic, and investigative journalism explainers. Operates on a high-key light cream grid paper canvas (`#D8D6D0`), featuring B&W photo cutouts with solid terracotta offset silhouettes (`#CA4D2D`), headline modern serifs, amber orange metrics (`#F9860B`), yellow stabilo highlighter sweeps (`#EFBC22`), comic speech bubbles, and kinetic typewriter quotes.
+- **`assets/starter-explainer-editorial.html`**: Production-ready starter template featuring full 1920×1080 responsive stage scaling, 48px global bottom progress bar, procedural paper grid background, animated odometer counter helper, SVG chart path animations, and typewriter character reveals.
+- **Reference Guide `references/editorial-collage.md`**: Comprehensive design system specifications, visual taxonomy, motion recipes, camera translation versus hard cuts, and component implementations. Updated `references/explainer.md` and `SKILL.md`.
+- **SFX Bundle Expansion (26 → 42 Takes)**: Integrated 16 new tactile sound effects:
+  - `ui/`: `comic-pop-toon-04.wav`, `comic-pop-click-05.wav` (punchy cartoon/cork pops for dialogue bubbles).
+  - `camera/`: `typewriter-classic-03.wav`, `04.wav`, `fast-roll-05.wav`, `vintage-roll-06.wav`, `latch-mech-07.wav` (mechanical typewriter keystrokes and carriage latch clicks; auto-rotates with `--word-clicks`).
+  - `ambience/`: `fire-crackle-paper-02.wav`, `03.wav` (burning paper/embers loops), `ocean-waves-ambient-02.wav`, `coastal-03.wav`, `gentle-04.wav` (maritime water washes), and `tension-drone-sub-02.wav`, `03.wav` (55Hz/110Hz cinematic tension sub-drones).
+  - `accent/`: `ship-horn-deep-02.wav`, `cruise-03.wav` (distant cargo and maritime horns).
+  - All takes normalized to contract (48 kHz / stereo / PCM-16 / -3 dBFS peak / 0 ms head / seamless loop crossfades). Updated `manifest.json`, `library.json`, `SOURCES.md`, and regenerated `_preview.wav`.
+
 ## 1.23.0 — 2026-09-28
 
 **Universal Web Video: Dual-Mode Compatibility (HyperFrames Ready)**

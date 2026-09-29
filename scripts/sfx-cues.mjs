@@ -261,7 +261,7 @@ let target = null;
 for (let i = 0; i < 160 && !target; i++) {
   await new Promise(r => setTimeout(r, 250));
   const list = await jget('/json/list');
-  target = list && list.find(t => t.type === 'page' && /index\.html/.test(t.url));
+  target = list && list.find(t => t.type === 'page' && /\.html/.test(t.url));
 }
 if (!target) { console.error('Chrome tidak memberi target page — cek PAGE dan CHROME.'); process.exit(1); }
 

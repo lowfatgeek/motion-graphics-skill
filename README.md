@@ -7,7 +7,7 @@
 **An agent skill that turns your AI coding agent into a motion designer.**<br>
 Openers, promos, product demos, kinetic typography, and explainers — built as a single `index.html` that plays like video, not like slides.
 
-[![Version](https://img.shields.io/badge/version-1.23.0-2f6fd6?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.24.0-2f6fd6?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-3fa34d?style=flat-square)](LICENSE)
 [![Agent Skills](https://img.shields.io/badge/format-Agent%20Skills-1c2a4a?style=flat-square)](#install)
 [![Works with](https://img.shields.io/badge/works%20with-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Gemini%20CLI%20%C2%B7%20Cursor-7a5af5?style=flat-square)](#install)
@@ -34,9 +34,9 @@ It also stops every project from looking the same. The look is **derived from yo
 | 🖥️ **Product & SaaS demos** | UI assembled and used on screen, camera following the clicks | 20–60 s |
 | 🔤 **Kinetic typography** | lyric-style statements, event announcements, manifestos | 10–30 s |
 | 📺 **Bumpers, idents, channel intros** | short brand moments that loop | 3–10 s |
-| 🧭 **Explainers** | six explainer styles, optional voice-over sync, 16:9 or 9:16 | 30–120 s |
+| 🧭 **Explainers** | seven explainer styles, optional voice-over sync, 16:9 or 9:16 | 30–120 s |
 | 🎥 **Video layers** | your own or generated clips placed like footage — inside devices, frames, and masks, locked to the timeline | — |
-| 🎧 **Sound design** | voice-over generated to word timestamps, then 26 bundled sound effects cued off the finished animation and mixed onto the MP4 without re-rendering a frame | — |
+| 🎧 **Sound design** | voice-over generated to word timestamps, then 42 bundled sound effects cued off the finished animation and mixed onto the MP4 without re-rendering a frame | — |
 | 🎞️ **After Effects builds** | cartoon explainers built directly inside AE through the Higgsfield MCP bridge | — |
 
 Every deliverable is one `index.html`: double-click to play, autoplay + loop, `?debug=1` for a scrub bar, and an optional frame-by-frame export to MP4.

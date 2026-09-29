@@ -1,6 +1,6 @@
 ---
 name: motion-bang-bang
-description: Build cinematic in-browser motion graphics (promo videos, openers, intros, bumpers, kinetic typography, and 16:9 or 9:16 illustrated explainers) using HTML + CSS + GSAP (+ Three.js when needed), producing outputs that move like real video rather than presentation slides. Features built-in ElevenLabs Text-to-Speech (TTS with word/sentence timestamps for frame-accurate timeline synchronization), Speech-to-Text (STT via Scribe for talking-head avatar videos, animated captions, and kinetic typography), and a bundled sound-effects library whose cues are mined from the rendered animation timeline and mixed post-render without re-rendering a single frame. Use this skill whenever the user asks for a "promo video", "opener", "animated intro", "motion graphic", "bumper", "kinetic typography", "cinematic text animation", "explainer", "explainer video" (visual journalism, educational cartoon, collage), "talking head video captioning", "add sound effects / whooshes to my video", or provides promotional/explainer video references and wants a web version — even if they do not explicitly say "motion graphic". Also use when the user complains web animation looks "like a PowerPoint/slideshow" and wants it more cinematic, wants to render web animation into an MP4 video file, or wants cartoon/animated explainers built DIRECTLY in After Effects via the Higgsfield MCP bridge.
+description: Build cinematic in-browser motion graphics (promo videos, openers, intros, bumpers, kinetic typography, and 16:9 or 9:16 illustrated explainers) using HTML + CSS + GSAP (+ Three.js when needed), producing outputs that move like real video rather than presentation slides. Features built-in ElevenLabs Text-to-Speech (TTS with word/sentence timestamps for frame-accurate timeline synchronization), Speech-to-Text (STT via Scribe for talking-head avatar videos, animated captions, and kinetic typography), and a bundled sound-effects library whose cues are mined from the rendered animation timeline and mixed post-render without re-rendering a single frame. Use this skill whenever the user asks for a "promo video", "opener", "animated intro", "motion graphic", "bumper", "kinetic typography", "cinematic text animation", "explainer", "explainer video" (editorial collage, vox style, visual journalism, educational cartoon, collage), "talking head video captioning", "add sound effects / whooshes to my video", or provides promotional/explainer video references and wants a web version — even if they do not explicitly say "motion graphic". Also use when the user complains web animation looks "like a PowerPoint/slideshow" and wants it more cinematic, wants to render web animation into an MP4 video file, or wants cartoon/animated explainers built DIRECTLY in After Effects via the Higgsfield MCP bridge.
 license: MIT
 metadata:
   maintainer: lowfatgeek
@@ -9,13 +9,13 @@ metadata:
   original_author_url: https://youtube.com/bangtutorial
   original_project: Bang Motion
   original_homepage: https://github.com/bangtutorial/bang-motion
-  version: "1.23.0"
-  updated: "2026-09-28"
+  version: "1.24.0"
+  updated: "2026-09-29"
 ---
 
 # Motion Bang Bang — Web Motion Graphics That Move Like Video, Not Slides
 
-**v1.23.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
+**v1.24.0 · Maintained by [lowfatgeek](https://github.com/lowfatgeek/motion-graphics-skill) · Based on [Bang Motion](https://github.com/bangtutorial/bang-motion) by [Bang Tutorial](https://youtube.com/bangtutorial) · MIT.** Change history in `CHANGELOG.md`; setup instructions in `README.md`.
 
 This skill is designed for any AI coding agent (open Agent Skills specification). It defines strict principles and production recipes for motion graphics that behave like real video rather than slide presentations. **Read and enforce these rules before writing any code.**
 
@@ -74,7 +74,7 @@ AI models default to presentation slide deck patterns unless explicitly constrai
 3. **Maximum Text Hierarchy**: Count text nodes per scene. `Eyebrow/kicker + headline + subtitle/body/credits` = 3 tiers $\rightarrow$ Slide deck. **Enforce a maximum of two tiers per scene**: one large headline/number + one diegetic world label. Badges, documents, stamps, or date blocks containing $\le 3$ short lines count as world objects, not text tiers.
 4. **Ken Burns Trap**: A slight scale animation (1.0 $\rightarrow$ 1.05) on a static image as the only movement = PPT. Every second of animation must feature active motion driven by the chosen **Background Motion Language** (`references/techniques.md` §7c): breathing camera on textured surfaces, moving gradients, floating organic blobs, live grain, segment light sweeps, slow rotating geometric hulls, rising particles, breathing grids, shifting ghost text, or parallax layers. Horizontal light streaks/lanes/horizontal particle rain must not be used as an automatic default.
 5. **Template Transition Trap**: Applying fade + scale bump + light leak to every cut = PPT template. Use purposeful transitions: 3D push-through, whip pans, cuts to diegetic instruments (gauges, maps, speedometers), or object wipes.
-6. **Correct Starter Selection**: An explainer MUST begin with its dedicated style starter: `starter-explainer-kartun`, `-jurnalisme`, `-katalog`, `-sketsa` (collage mode: camera traverses static assets), `starter-explainer` (continuous action: flowing world), or `starter-explainer-panggung` (cartoon stage: 1 stage per scene, jointed puppet rigs). Never start an explainer from `assets/starter-opener.html` (text opener) or an empty canvas.
+6. **Correct Starter Selection**: An explainer MUST begin with its dedicated style starter: `starter-explainer-kartun`, `-jurnalisme`, `-katalog`, `-sketsa`, `-editorial` (collage mode: camera traverses static assets), `starter-explainer` (continuous action: flowing world), or `starter-explainer-panggung` (cartoon stage: 1 stage per scene, jointed puppet rigs). Never start an explainer from `assets/starter-opener.html` (text opener) or an empty canvas.
 7. **Miniature Trap**: Camera zoomed out ($< 1.08$) making houses thumb-sized with empty space filling half the frame = PPT. Split large environments into distinct frame-sized stages (`references/kartun-panggung.md` Law 1).
 8. **Formulaic Opener Framework**: Avoid the clichéd sequence: zoom-in text exiting left $\rightarrow$ 3 icon tiles $\rightarrow$ typing search bar $\rightarrow$ hook $\rightarrow$ feature $\rightarrow$ feature $\rightarrow$ promise $\rightarrow$ logo $\rightarrow$ CTA. If 2 or more of these elements appear without strict concept justification, select a distinct concept from `references/opener-konsep.md`.
 
@@ -86,7 +86,7 @@ This skill covers web-based motion graphics in general. Explainers have dedicate
 
 Starter files match their project category:
 - `starter-opener.html`: Openers, promos, bumpers, channel intros, and kinetic typography.
-- `starter-explainer-*.html`: Explainers, with suffixes designating style/mode (`-kartun`, `-jurnalisme`, `-katalog`, `-sketsa` for collage; no suffix for continuous action; `-panggung` for cartoon stage). Cartoon stage is an explainer style (Style 6), not an isolated format.
+- `starter-explainer-*.html`: Explainers, with suffixes designating style/mode (`-kartun`, `-jurnalisme`, `-katalog`, `-sketsa`, `-editorial` for collage; no suffix for continuous action; `-panggung` for cartoon stage). Cartoon stage is an explainer style (Style 6), not an isolated format.
 
 | Category | Typical Duration | Characteristics | Core Blueprint |
 |---|---|---|---|
@@ -95,7 +95,7 @@ Starter files match their project category:
 | Channel Intro / Outro | 5–12 s | Channel title + consistent repeatable signature motion | Workflow below |
 | Kinetic Typography / Lyrics | 15–60 s | Text is the primary hero; word/character splitting; rhythm strictly matches audio | `references/techniques.md` (split + directional blur, 3D word pan) |
 | Title / Lower Third / Segment Bumper | 2–6 s | Subtle overlays atop footage, clean in/out, transparent backdrop | `references/techniques.md` |
-| Illustrated Explainer Video | 30–90 s | Sourced factual narrative, persistent entities, shifting visual angles, 6 defined styles | `references/explainer.md` + style starter |
+| Illustrated Explainer Video | 30–90 s | Sourced factual narrative, persistent entities, shifting visual angles, 7 defined styles | `references/explainer.md` + `references/editorial-collage.md` + style starter |
 
 ## Explainers and Characters: Read Before Defining Shots
 

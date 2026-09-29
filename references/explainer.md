@@ -30,6 +30,7 @@ Users often ask: "Make an explainer about X." Left unguided, models invent style
 | 4 | Vintage Sketch | Sepia parchment, fine copperplate engraving, classic serifs, rust accents | History, biography, discoveries | Engraving/etching illustrations with multiply blending |
 | 5 | Continuous Action (Vector) | Flowing continuous world, persistent hero, in-world stats, shifting angles | Speed, transit, sports, logistics, workflows | 100% procedural SVG geometry, zero AI generation |
 | 6 | Cartoon Stage | Vibrant flat colors, 1 stage per scene, articulated puppets, zero captions | Character-driven educational stories | Vector world & bodies; generated head with local expressions |
+| 7 | Editorial Collage | Light cream grid paper, B&W cutouts + red offset silhouettes, orange metrics, yellow highlighter, typewriter punchline | Investigative journalism, geopolitics, macroeconomic analysis, modern history | Licensed news/archive photos -> B&W cutouts + solid red offset silhouettes + SVG data cards |
 
 ### Additional Parameters (Ask in the Same Turn)
 
@@ -69,13 +70,14 @@ Always start from the dedicated template in `assets/`:
 - `starter-explainer-sketsa.html` (Vintage sketch)
 - `starter-explainer.html` (Continuous action vector)
 - `starter-explainer-panggung.html` (Cartoon stage)
+- `starter-explainer-editorial.html` (Editorial collage / Vox style)
 
 ### The Two Motion Paradigms
 
 | Paradigm | Scene Canvas | Primary Motion Mechanics | Used By |
 |---|---|---|---|
 | **FLOW** | Continuous parallax world strip driven by speed curves; hero stays anchored | World flows past hero; perspective shifts | Continuous action (vector) |
-| **COLLAGE** | Large static canvas with layered cutouts/photos | Camera choreographs: `into` $\rightarrow$ `settle` $\rightarrow$ `look` $\rightarrow$ `home` $\rightarrow$ stationary | Cartoon collage, visual journalism, catalog, vintage sketch |
+| **COLLAGE** | Large static canvas with layered cutouts/photos | Camera choreographs: `into` $\rightarrow$ `settle` $\rightarrow$ `look` $\rightarrow$ `home` $\rightarrow$ stationary | Cartoon collage, visual journalism, catalog, vintage sketch, editorial collage |
 
 **Timeline Scrubbing Caveat**: GSAP's `tl.pause(t)` suppresses callbacks (`suppressEvents: true`), preventing `onUpdate: applyCam` from firing during static snapshots. Always implement seek helpers as `tl.pause(t, false)` followed by an explicit `applyCam()` call. Never start an explainer from `assets/starter-opener.html` or an empty file.
 

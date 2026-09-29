@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="id">
+<!-- Motion Bang Bang (https://github.com/lowfatgeek/motion-graphics-skill) - MIT - Based on Bang Motion by Bang Tutorial (https://youtube.com/bangtutorial) -->
+<head>
+<meta charset="utf-8">
+<title>Starter Explainer — Editorial Collage (Mixed-Media Journalism / Vox Style)</title>
+<!--
+  Gaya 7: Editorial Collage (Mixed-Media Journalism / Vox Style).
+  Latar kertas krem bergrid arsitektur, foto jurnalistik/arsip monokrom dengan siluet merah bata offset,
+  headline serif kontras tinggi (Playfair Display), metrik tebal geometric sans (Montserrat),
+  stabilo kuning (highlighter), balon dialog komik, kartu data SVG animatif, konter angka dinamis (odometer),
+  adegan klimaks mesin tik vintage, dan timeline progress bar oranye di bagian paling bawah layar.
+
+  Rig Kompatibilitas:
+    - MODE KOLASE & HARD CUT: Dunia fisik (#world) diarungi kamera rig (into -> settle -> look -> home),
+      dikombinasikan dengan Hard Cut 1-frame untuk pergantian bab/topik besar.
+    - Global Progress Bar (#pbar): Garis oranye 48px di bagian bawah panggung yang terikat langsung
+      ke durasi timeline GSAP (width: 0% -> 100%).
+    - Word Cues & Typewriter: Mendukung --word-clicks pada sfx-cues.mjs untuk suara tuts mesin tik per kata.
+    - Autoplay + Loop tanpa player; ?debug=1 = panel scrub; ?clean=1 = untuk render export.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #D8D6D0;
+  --grid: rgba(200, 197, 191, 0.45);
+  --ink: #1A1A1A;
+  --ink-mute: #6B7280;
+  --red-sil: #CA4D2D;
+  --orange: #F9860B;
+  --yellow-hl: #EFBC22;
+  --card-bg: #FDFDFD;
+  --paper-news: #FBFBF8;
+}
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #111;
+  overflow: hidden;
+  font-family: 'Montserrat', system-ui, sans-serif;
+  color: var(--ink);
+}
+
+#stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background-color: var(--bg);
+  background-image: 
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: translate(-50%, -50%) scale(1);
+  transform-origin: center center;
+}
+
+/* Tekstur butiran kertas tipis */
+.paper-grain {
+  position: absolute;
+  inset: -200px;
+  pointer-events: none;
+  opacity: 0.18;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 2;
+}
+
+#world {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+  z-index: 10;
+}
+
+#filters {
+  position: fixed;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==================== KOMPONEN EDITORIAL ==================== */
+
+/* 1. Global Bottom Progress Bar */
+#pbar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 48px;
+  width: 0%;
+  background: var(--orange);
+  z-index: 99;
+}
+
+/* 2. Cutout dengan Siluet Merah Offset */
+.figure-cutout {
+  position: absolute;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.figure-cutout .silhouette {
+  position: absolute;
+  inset: 0;
+  background-color: var(--red-sil);
+  transform: translate(-18px, -14px);
+  z-index: 1;
+  border-radius: 6px;
+}
+.figure-cutout img, .figure-cutout .photo-mock {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(100%) contrast(110%);
+  z-index: 2;
+}
+.photo-mock {
+  background: #333;
+  color: #eee;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* 3. Newspaper Article Card */
+.newspaper {
+  position: absolute;
+  background: var(--paper-news);
+  border-radius: 4px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.12), 0 8px 16px rgba(0,0,0,0.06);
+  padding: 40px 50px;
+  box-sizing: border-box;
+  opacity: 0;
+  transform-origin: center center;
+}
+.newspaper .masthead {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 46px;
+  border-bottom: 2px solid #222;
+  padding-bottom: 12px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.newspaper .date-tag {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink-mute);
+  letter-spacing: 0.1em;
+}
+.newspaper .headline {
+  font-family: 'Playfair Display', serif;
+  font-weight: 900;
+  font-size: 64px;
+  line-height: 1.05;
+  margin-bottom: 24px;
+  letter-spacing: -0.01em;
+}
+
+/* 4. Stabilo Highlighter */
+.hl {
+  position: relative;
+  display: inline-block;
+}
+.hl i {
+  position: absolute;
+  inset: -4px -8px -4px -8px;
+  background: var(--yellow-hl);
+  mix-blend-mode: multiply;
+  transform: scaleX(0);
+  transform-origin: left center;
+  z-index: -1;
+  border-radius: 3px;
+}
+
+/* 5. Floating Data Card & SVG Chart */
+.data-card {
+  position: absolute;
+  background: var(--card-bg);
+  border-radius: 18px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+  padding: 32px 40px;
+  box-sizing: border-box;
+  opacity: 0;
+}
+.data-card .card-title {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #333;
+  margin-bottom: 20px;
+}
+.chart-path {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 6. Dynamic Odometer Badge */
+.odometer-badge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  opacity: 0;
+}
+.odometer-badge .icon-pill {
+  width: 60px;
+  height: 90px;
+  background: var(--orange);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 28px;
+}
+.odometer-badge .counter-val {
+  font-size: 80px;
+  font-weight: 900;
+  line-height: 1;
+}
+.odometer-badge .counter-sub {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--ink-mute);
+}
+
+/* 7. Comic Speech Bubble */
+.speech-bubble {
+  position: absolute;
+  background: #fff;
+  border: 4px solid #1A1A1A;
+  border-radius: 28px;
+  padding: 16px 28px;
+  font-size: 28px;
+  font-weight: 900;
+  color: #1A1A1A;
+  box-shadow: 4px 6px 0px rgba(0,0,0,0.9);
+  opacity: 0;
+  transform-origin: bottom left;
+  white-space: nowrap;
+}
+.speech-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -18px;
+  left: 36px;
+  border-width: 18px 14px 0;
+  border-style: solid;
+  border-color: #1A1A1A transparent;
+  display: block;
+  width: 0;
+}
+
+/* 8. Climax Typewriter Block */
+.typewriter-box {
+  position: absolute;
+  font-family: 'Special Elite', monospace;
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0.04em;
+  max-width: 1300px;
+  opacity: 0;
+}
+.tw-cursor {
+  display: inline-block;
+  color: var(--ink);
+  animation: cursorBlink 0.65s steps(1) infinite;
+}
+@keyframes cursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Debug panel */
+#dbg {
+  position: fixed;
+  left: 50%;
+  bottom: 60px;
+  transform: translateX(-50%);
+  display: none;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: rgba(20,22,28,0.92);
+  color: #e2e8f0;
+  font: 13px system-ui;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+#dbg input { width: 360px; accent-color: var(--orange); }
+#dbg span { font-variant-numeric: tabular-nums; min-width: 6ch; }
+</style>
+</head>
+<body>
+<svg id="filters"><defs></defs></svg>
+
+<div id="stage" data-composition-id="main" data-width="1920" data-height="1080">
+  <div class="paper-grain"></div>
+
+  <div id="world">
+    <!-- BAB 1: OCKLUDER & POPUP FIGURES -->
+    <div id="chap-intro" style="position:absolute;left:0;top:0;width:1920px;height:1080px;">
+      <div class="figure-cutout" id="figA" style="left:520px;top:280px;width:340px;height:480px;">
+        <div class="silhouette"></div>
+        <div class="photo-mock">FOTO TOKOH 1<br>(B&W Cutout)</div>
+      </div>
+      <div class="figure-cutout" id="figB" style="left:1060px;top:280px;width:340px;height:480px;">
+        <div class="silhouette"></div>
+        <div class="photo-mock">FOTO TOKOH 2<br>(B&W Cutout)</div>
+      </div>
+      <!-- Foreground occluder (gedung/objek) -->
+      <div id="occluder" style="position:absolute;left:400px;top:540px;width:1120px;height:480px;background:#EAE8E2;border:3px solid #C8C5BF;border-radius:12px;display:grid;place-items:center;font-size:32px;font-weight:900;color:#555;z-index:5;">
+        GEDUNG / OBJEK FOREGROUND (OCCLUDER)
+      </div>
+    </div>
+
+    <!-- BAB 2: NEWSPAPER HEADLINE (HARD CUT KE KOORDINAT BARU) -->
+    <div id="chap-press" style="position:absolute;left:2400px;top:0;width:1920px;height:1080px;">
+      <div class="newspaper" id="newsCard" style="left:260px;top:160px;width:1400px;height:740px;transform:rotate(-3deg);">
+        <div class="masthead">
+          <span>THE NATION</span>
+          <span class="date-tag">APRIL 8, 2026 · INVESTIGATION</span>
+        </div>
+        <div class="headline">
+          The Breakdown of Financial Order and <span class="hl" id="hlWord"><i></i>Empire Collapse</span>
+        </div>
+        <div style="font-size:20px;line-height:1.6;color:#444;max-width:900px;">
+          GANTI DENGAN KUTIPAN KORAN ASLI: Menampilkan kutipan investigasi konkret dengan stabilo menyapu kata kunci yang dibacakan voiceover.
+        </div>
+      </div>
+    </div>
+
+    <!-- BAB 3: DATA & ODOMETER COUNTER (KAMERA PANNING DI DALAM STAGE) -->
+    <div id="chap-data" style="position:absolute;left:4800px;top:0;width:2400px;height:1080px;">
+      <!-- Kartu Grafik -->
+      <div class="data-card" id="chartCard" style="left:120px;top:200px;width:820px;height:620px;">
+        <div class="card-title">U.S. INFLATION RATE (2016-2026)</div>
+        <svg width="740" height="420" viewBox="0 0 740 420" style="overflow:visible;">
+          <line x1="0" y1="360" x2="740" y2="360" stroke="#ddd" stroke-width="2"/>
+          <line x1="0" y1="240" x2="740" y2="240" stroke="#ddd" stroke-width="2" stroke-dasharray="6 6"/>
+          <line x1="0" y1="120" x2="740" y2="120" stroke="#ddd" stroke-width="2" stroke-dasharray="6 6"/>
+          <path id="chartLine" class="chart-path" d="M 40 330 Q 200 300 360 120 T 680 180" />
+          <circle id="chartDot" cx="680" cy="180" r="10" fill="#F9860B" stroke="#fff" stroke-width="4" opacity="0"/>
+        </svg>
+      </div>
+
+      <!-- Odometer Metric Badge -->
+      <div class="odometer-badge" id="oilBadge" style="left:1040px;top:320px;">
+        <div class="icon-pill">★</div>
+        <div>
+          <div class="counter-val" id="oilVal">$57</div>
+          <div class="counter-sub">PER BARREL HIGH</div>
+        </div>
+      </div>
+
+      <!-- Balon Dialog Komik -->
+      <div class="speech-bubble" id="bubbleA" style="left:1040px;top:540px;">
+        "KESEPAKATAN BARU!"
+      </div>
+    </div>
+
+    <!-- BAB 4: PUNCHLINE MESIN TIK (HARD CUT KE ADALAH KLIMAKS) -->
+    <div id="chap-climax" style="position:absolute;left:7600px;top:0;width:1920px;height:1080px;">
+      <div class="typewriter-box" id="twBox" style="left:260px;top:360px;">
+        <span id="twLine1"></span><br>
+        <span id="twLine2"></span><span class="tw-cursor">█</span>
+      </div>
+      <!-- Uang kertas cutout terbakar di bawah -->
+      <div class="figure-cutout" id="currencyCard" style="left:820px;top:720px;width:400px;height:220px;">
+        <div class="photo-mock" style="background:#2d4a3e;color:#a3e635;">UANG KERTAS $100<br>(B&W Cutout + Api VFX)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Progress Bar -->
+  <div id="pbar"></div>
+
+  <!-- Debug Bar -->
+  <div id="dbg">
+    <button id="dPlay">Pause</button>
+    <input id="dScrub" type="range" min="0" max="1000" value="0">
+    <span id="dClock">0.00s</span>
+  </div>
+</div>
+
+<audio id="vo" src="" preload="auto"></audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const W = 1920, H = 1080, DUR = 24; // Durasi default (sesuaikan durasi VO)
+
+/* ---------- Responsif Stage Scaler ---------- */
+function fit() {
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  $('#stage').style.transform = `translate(-50%, -50%) scale(${s})`;
+}
+addEventListener('resize', fit);
+fit();
+
+/* ---------- Kamera Rig & Navigation ---------- */
+const rig = $('#world');
+const C = { x: 960, y: 540, z: 1 };
+function applyCam() {
+  rig.style.transform = `translate(${960 - C.x * C.z}px, ${540 - C.y * C.z}px) scale(${C.z})`;
+}
+
+const look = (at, x, y, z, dur = 1.4, ease = 'power2.inOut') =>
+  tl.to(C, { x, y, z, duration: dur, ease, onUpdate: applyCam }, at);
+
+const hardCut = (at, x, y, z = 1) =>
+  tl.set(C, { x, y, z, onUpdate: applyCam }, at);
+
+/* ---------- Helper Animasi Odometer (Angka Berjalan) ---------- */
+function animateCounter(tl, targetEl, startVal, endVal, at, dur = 1.2, prefix = '$', suffix = '') {
+  const obj = { v: startVal };
+  tl.to(obj, {
+    v: endVal,
+    duration: dur,
+    ease: 'power2.out',
+    data: 'counter',
+    onUpdate: () => {
+      targetEl.textContent = `${prefix}${Math.round(obj.v).toLocaleString()}${suffix}`;
+    }
+  }, at);
+}
+
+/* ---------- Helper Animasi Typewriter ---------- */
+function typeText(tl, targetEl, text, at, speed = 0.045) {
+  const chars = text.split('');
+  chars.forEach((char, i) => {
+    tl.call(() => {
+      targetEl.textContent = text.slice(0, i + 1);
+    }, null, at + i * speed);
+  });
+  return at + chars.length * speed;
+}
+
+/* ---------- Master Timeline GSAP ---------- */
+const tl = gsap.timeline({ paused: true });
+
+// 1. Global Bottom Progress Bar (0% -> 100% linear)
+tl.to('#pbar', { width: '100%', duration: DUR, ease: 'none' }, 0);
+
+// 2. BAB 1: Ockluder & Figures Pop-up (t = 0.0s - 4.5s)
+hardCut(0, 960, 540, 1);
+tl.fromTo('#figA', { opacity: 0, y: 180 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', data: 'whoosh' }, 0.3);
+tl.fromTo('#figB', { opacity: 0, y: 180 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', data: 'whoosh' }, 0.9);
+
+// 3. BAB 2: Hard Cut ke Surat Kabar & Stabilo (t = 4.5s - 10.0s)
+hardCut(4.5, 3360, 540, 1);
+tl.fromTo('#newsCard', { opacity: 0, scale: 0.92, rotate: -6 }, { opacity: 1, scale: 1, rotate: -3, duration: 0.6, ease: 'power3.out', data: 'slam' }, 4.5);
+// Stabilo menyapu teks penting
+tl.to('#hlWord i', { scaleX: 1, duration: 0.6, ease: 'power2.inOut', data: 'draw' }, 6.2);
+
+// 4. BAB 3: Hard Cut & Panning di Stage Data (t = 10.0s - 17.0s)
+hardCut(10.0, 5760, 540, 1);
+tl.fromTo('#chartCard', { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power2.out', data: 'slam' }, 10.0);
+
+// Gambar kurva grafik
+const pathLen = 700;
+gsap.set('#chartLine', { strokeDasharray: pathLen, strokeDashoffset: pathLen });
+tl.to('#chartLine', { strokeDashoffset: 0, duration: 1.8, ease: 'power2.inOut', data: 'draw' }, 10.4);
+tl.to('#chartDot', { opacity: 1, scale: 1.3, yoyo: true, repeat: 1, duration: 0.3 }, 12.0);
+
+// Kamera bergeser ke kanan mengungkap Odometer & Speech Bubble
+look(12.5, 6200, 540, 1, 1.2, 'power2.inOut');
+tl.fromTo('#oilBadge', { opacity: 0, scale: 0.7 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'back.out(1.5)', data: 'pop' }, 12.8);
+animateCounter(tl, $('#oilVal'), 57, 116, 13.0, 1.2, '$', '');
+
+tl.fromTo('#bubbleA', { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.45, ease: 'back.out(1.6)', data: 'comic' }, 14.5);
+
+// 5. BAB 4: Hard Cut ke Punchline Mesin Tik (t = 17.0s - 24.0s)
+hardCut(17.0, 8560, 540, 1);
+tl.set('#twBox', { opacity: 1 }, 17.0);
+tl.fromTo('#currencyCard', { opacity: 0, y: 80 }, { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out', data: 'whoosh' }, 17.2);
+
+// Ketikan teks baris 1 & 2
+const tEnd1 = typeText(tl, $('#twLine1'), "EMPIRES DON'T END WITH A WAR.", 17.8, 0.045);
+typeText(tl, $('#twLine2'), "THEY END WITH A BILL THEY CAN NO LONGER PAY.", tEnd1 + 0.6, 0.045);
+
+/* ---------- Player, Loop & Debug Scrubbing ---------- */
+const vo = $('#vo');
+function playAll() {
+  tl.play(0);
+  if (vo.src) { vo.currentTime = 0; vo.play().catch(() => {}); }
+}
+tl.eventCallback('onComplete', () => {
+  if (window.location.search.includes('clean=1')) return;
+  playAll();
+});
+
+// Expose opener interface for snap.mjs, sfx-cues.mjs, and HyperFrames
+window.OPENER = {
+  W, H,
+  ready: true,
+  tl,
+  dur: DUR,
+  seek(t) {
+    tl.pause(t, false);
+    applyCam();
+  }
+};
+window.__timelines = window.__timelines || {};
+window.__timelines["main"] = tl;
+
+// Debug panel (?debug=1)
+if (window.location.search.includes('debug=1')) {
+  const dbg = $('#dbg'), playBtn = $('#dPlay'), scrub = $('#dScrub'), clock = $('#dClock');
+  dbg.style.display = 'flex';
+  playBtn.onclick = () => {
+    if (tl.paused()) { tl.play(); playBtn.textContent = 'Pause'; }
+    else { tl.pause(); playBtn.textContent = 'Play'; }
+  };
+  scrub.oninput = () => {
+    tl.pause(scrub.value / 1000 * DUR, false);
+    applyCam();
+    clock.textContent = (tl.time()).toFixed(2) + 's';
+    playBtn.textContent = 'Play';
+  };
+  tl.eventCallback('onUpdate', () => {
+    scrub.value = (tl.time() / DUR) * 1000;
+    clock.textContent = (tl.time()).toFixed(2) + 's';
+  });
+} else if (!window.location.search.includes('clean=1')) {
+  playAll();
+}
+
+// Hidden keyboard controls
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') {
+    e.preventDefault();
+    tl.paused() ? tl.play() : tl.pause();
+  } else if (e.code === 'KeyR') {
+    playAll();
+  }
+});
+</script>
+</body>
+</html>
